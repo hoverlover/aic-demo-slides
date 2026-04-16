@@ -198,6 +198,74 @@
     letter-spacing: -0.02em;
   }
 
+  /* ==================== NAME SLIDE ==================== */
+  .name-slide {
+    align-items: center;
+    text-align: center;
+    padding: 0 8vw 5vh;
+  }
+
+  .name-slide .slide-title {
+    font-size: clamp(1.8rem, 2.8vw, 2.5rem);
+    color: #34d399;
+    font-weight: 700;
+    margin-bottom: 5vh;
+    letter-spacing: -0.02em;
+  }
+
+  .name-definition {
+    max-width: 700px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 4vh;
+  }
+
+  .name-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+  }
+
+  .name-entry .word {
+    font-size: clamp(2rem, 3vw, 2.8rem);
+    font-weight: 700;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .name-entry .word .highlight {
+    color: #34d399;
+  }
+
+  .name-entry .pronunciation {
+    font-size: clamp(0.85rem, 1vw, 1rem);
+    color: #71717a;
+    font-style: italic;
+  }
+
+  .name-entry .part-of-speech {
+    font-size: clamp(0.8rem, 0.9vw, 0.9rem);
+    color: #52525b;
+    font-style: italic;
+  }
+
+  .name-entry .definition {
+    font-size: clamp(1rem, 1.2vw, 1.15rem);
+    color: #94a3b8;
+    line-height: 1.7;
+  }
+
+  .name-entry .definition strong {
+    color: #e2e8f0;
+  }
+
+  .name-divider {
+    width: 60px;
+    height: 2px;
+    background: #27272a;
+  }
+
   .why-slide .why-list {
     list-style: none;
     display: flex;
@@ -575,7 +643,7 @@
 <div class="deck">
 
   <!-- Slide counter -->
-  <div class="slide-counter"><span class="current" id="counter-current">1</span> / <span id="counter-total">6</span></div>
+  <div class="slide-counter"><span class="current" id="counter-current">1</span> / <span id="counter-total">7</span></div>
 
   <!-- SLIDE 1: TITLE -->
   <div class="slide title-slide active" data-slide="0">
@@ -606,8 +674,30 @@
     </div>
   </div>
 
-  <!-- SLIDE 2: WHY I BUILT THIS -->
-  <div class="slide why-slide" data-slide="1">
+  <!-- SLIDE 2: THE NAME -->
+  <div class="slide name-slide" data-slide="1">
+    <div class="slide-title">The Name</div>
+    <div class="name-definition">
+      <div class="name-entry">
+        <div class="word">chela</div>
+        <div class="pronunciation">/ˈkiː.lə/ &mdash; KEE-luh</div>
+        <div class="part-of-speech">noun &mdash; from Greek chele, meaning pincer or claw</div>
+        <div class="definition">The zoological term for the <strong>grasping appendage</strong> of crustaceans &mdash; the tool they use to grab, hold, and pass things along.</div>
+      </div>
+      <div class="name-divider"></div>
+      <div class="name-entry">
+        <div class="word">Chela<span class="highlight">Mail</span></div>
+        <div class="definition">Your agent's <strong>claw for email</strong>. A nod to <strong>OpenClaw</strong> and its community of lobster enthusiasts proving that agents work best when they have the right tools within reach.</div>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">AI-Native<span class="dot">&middot;</span>Email Infra</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: WHY I BUILT THIS -->
+  <div class="slide why-slide" data-slide="2">
     <div class="slide-title">Why ChelaMail?</div>
     <ul class="why-list">
       <li><strong>Agents should have their own email</strong> &mdash; not borrow a human's inbox</li>
@@ -620,8 +710,8 @@
     </div>
   </div>
 
-  <!-- SLIDE 3: FEATURES 1-3 -->
-  <div class="slide feature-slide" data-slide="2">
+  <!-- SLIDE 4: FEATURES 1-3 -->
+  <div class="slide feature-slide" data-slide="3">
     <div class="slide-title">Features</div>
     <div class="feature-cards">
 
@@ -661,8 +751,8 @@
     </div>
   </div>
 
-  <!-- SLIDE 4: SPAM + SECURITY (with screenshot) -->
-  <div class="slide security-slide" data-slide="3">
+  <!-- SLIDE 5: SPAM + SECURITY (with screenshot) -->
+  <div class="slide security-slide" data-slide="4">
     <div class="slide-title">Spam + Security</div>
     <div class="security-content">
       <div class="security-details">
@@ -687,8 +777,8 @@
     </div>
   </div>
 
-  <!-- SLIDE 5: FEATURES (Quota + Attachments) -->
-  <div class="slide two-feature-slide" data-slide="4">
+  <!-- SLIDE 6: FEATURES (Quota + Attachments) -->
+  <div class="slide two-feature-slide" data-slide="5">
     <div class="slide-title">Features</div>
     <div class="two-feature-cards">
 
@@ -721,8 +811,8 @@
     </div>
   </div>
 
-  <!-- SLIDE 6: PRICING + QR -->
-  <div class="slide pricing-slide" data-slide="5">
+  <!-- SLIDE 7: PRICING + QR -->
+  <div class="slide pricing-slide" data-slide="6">
     <div class="content">
 
       <div class="pricing-block">
