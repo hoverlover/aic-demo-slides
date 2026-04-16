@@ -430,6 +430,64 @@
     color: #5865f2;
     font-weight: 700;
   }
+
+  /* ==================== REMOTE CONTROL ==================== */
+  .remote-ui {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    width: 100vw;
+    background: #1e1f22;
+    gap: 3vh;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .remote-ui.active { display: flex; }
+
+  .remote-ui .remote-title {
+    font-size: 1.2rem;
+    color: #5865f2;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  .remote-ui .remote-counter {
+    font-size: 3rem;
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .remote-ui .remote-counter .rc-total {
+    color: #4e5058;
+    font-weight: 400;
+  }
+
+  .remote-ui .remote-buttons {
+    display: flex;
+    gap: 4vw;
+  }
+
+  .remote-ui .remote-btn {
+    background: #2b2d31;
+    border: 2px solid #5865f2;
+    color: #5865f2;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    padding: 2.5vh 8vw;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .remote-ui .remote-btn:active {
+    background: #5865f2;
+    color: #1e1f22;
+  }
 </style>
 </head>
 <body>
@@ -659,6 +717,15 @@
 
 <div class="nav-hint">Arrow keys or click to navigate</div>
 
+<div class="remote-ui" id="remote-ui">
+  <div class="remote-title">CC Discord Remote</div>
+  <div class="remote-counter"><span id="rc-current">1</span> <span class="rc-total">/ <span id="rc-total">?</span></span></div>
+  <div class="remote-buttons">
+    <button class="remote-btn" id="rc-prev">Prev</button>
+    <button class="remote-btn" id="rc-next">Next</button>
+  </div>
+</div>
+
 <script>
   var qr = qrcode(0, 'M');
   qr.addData('https://github.com/hoverlover/cc-discord');
@@ -714,6 +781,51 @@
     span.style.animationDuration = (18 + Math.random() * 25) + 's';
     span.style.animationDelay = -(Math.random() * 30) + 's';
     container.appendChild(span);
+  }
+
+  // BroadcastChannel remote control
+  var channel = new BroadcastChannel('slide-remote');
+  var isRemote = location.search.indexOf('remote') !== -1;
+
+  if (isRemote) {
+    // Remote mode: hide deck, show remote UI
+    document.querySelector('.deck').style.display = 'none';
+    document.querySelector('.nav-hint').style.display = 'none';
+    document.getElementById('remote-ui').classList.add('active');
+
+    document.getElementById('rc-prev').addEventListener('click', function(e) {
+      e.stopPropagation();
+      channel.postMessage({ type: 'nav', action: 'prev' });
+    });
+
+    document.getElementById('rc-next').addEventListener('click', function(e) {
+      e.stopPropagation();
+      channel.postMessage({ type: 'nav', action: 'next' });
+    });
+
+    channel.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'sync') {
+        document.getElementById('rc-current').textContent = e.data.current;
+        document.getElementById('rc-total').textContent = e.data.total;
+      }
+    });
+  } else {
+    // Presentation mode: listen for nav commands, broadcast sync
+    var _origGoTo = goTo;
+    goTo = function(n) {
+      _origGoTo(n);
+      channel.postMessage({ type: 'sync', current: current + 1, total: total });
+    };
+
+    channel.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'nav') {
+        if (e.data.action === 'next') goTo(current + 1);
+        else if (e.data.action === 'prev') goTo(current - 1);
+      }
+    });
+
+    // Broadcast initial sync on load
+    channel.postMessage({ type: 'sync', current: current + 1, total: total });
   }
 </script>
 
