@@ -783,49 +783,60 @@
     container.appendChild(span);
   }
 
-  // BroadcastChannel remote control
-  var channel = new BroadcastChannel('slide-remote');
+  // Cross-device remote control via Vercel KV
   var isRemote = location.search.indexOf('remote') !== -1;
 
   if (isRemote) {
-    // Remote mode: hide deck, show remote UI
-    document.querySelector('.deck').style.display = 'none';
-    document.querySelector('.nav-hint').style.display = 'none';
-    document.getElementById('remote-ui').classList.add('active');
-
-    document.getElementById('rc-prev').addEventListener('click', function(e) {
-      e.stopPropagation();
-      channel.postMessage({ type: 'nav', action: 'prev' });
-    });
-
-    document.getElementById('rc-next').addEventListener('click', function(e) {
-      e.stopPropagation();
-      channel.postMessage({ type: 'nav', action: 'next' });
-    });
-
-    channel.addEventListener('message', function(e) {
-      if (e.data && e.data.type === 'sync') {
-        document.getElementById('rc-current').textContent = e.data.current;
-        document.getElementById('rc-total').textContent = e.data.total;
-      }
-    });
+    window.location.href = '/remote';
   } else {
-    // Presentation mode: listen for nav commands, broadcast sync
+    var roomCode = null;
+    var roomBadge = document.createElement('div');
+    roomBadge.id = 'room-badge';
+    roomBadge.style.cssText = 'position:fixed;top:2vh;left:3vw;z-index:200;background:#2b2d31;border:1px solid #3f4147;border-radius:10px;padding:0.6vh 1.2vw;font-family:"DM Mono",monospace;font-size:0.85rem;color:#5865f2;opacity:0.85;';
+    document.body.appendChild(roomBadge);
+
+    fetch('/api/room', { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        roomCode = data.room;
+        roomBadge.textContent = 'Remote: ' + roomCode;
+        fetch('/api/nav', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ room: roomCode, action: 'goto', slide: current + 1, total: total })
+        });
+        setInterval(pollRemote, 500);
+      })
+      .catch(function() {
+        roomBadge.textContent = 'Remote: offline';
+      });
+
+    var lastRemoteSlide = current + 1;
+    function pollRemote() {
+      if (!roomCode) return;
+      fetch('/api/state?room=' + roomCode)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.current !== undefined && data.current !== current + 1 && data.current !== lastRemoteSlide) {
+            lastRemoteSlide = data.current;
+            goTo(data.current - 1);
+          }
+        })
+        .catch(function() {});
+    }
+
     var _origGoTo = goTo;
     goTo = function(n) {
       _origGoTo(n);
-      channel.postMessage({ type: 'sync', current: current + 1, total: total });
-    };
-
-    channel.addEventListener('message', function(e) {
-      if (e.data && e.data.type === 'nav') {
-        if (e.data.action === 'next') goTo(current + 1);
-        else if (e.data.action === 'prev') goTo(current - 1);
+      lastRemoteSlide = current + 1;
+      if (roomCode) {
+        fetch('/api/nav', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ room: roomCode, action: 'goto', slide: current + 1, total: total })
+        });
       }
-    });
-
-    // Broadcast initial sync on load
-    channel.postMessage({ type: 'sync', current: current + 1, total: total });
+    };
   }
 </script>
 
