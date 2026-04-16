@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChelaMail — Email for AI Agents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', monospace;
+    background: #0a0a0a;
+    color: #d4d4d8;
+  }
+
+  /* Slide container */
+  .deck {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    overflow: hidden;
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Shared background glow */
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: -30%;
+    left: -20%;
+    width: 160%;
+    height: 160%;
+    background: radial-gradient(ellipse at 30% 30%, rgba(52, 211, 153, 0.05) 0%, transparent 55%),
+                radial-gradient(ellipse at 70% 70%, rgba(5, 150, 105, 0.04) 0%, transparent 50%);
+    z-index: 0;
+  }
+
+  .slide > * { position: relative; z-index: 1; }
+
+  /* Shared footer */
+  .slide-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1.5vh 5vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #1a1a1e;
+  }
+
+  .slide-footer .left {
+    font-size: 0.75rem;
+    color: #3f3f46;
+  }
+
+  .slide-footer .right {
+    font-size: 0.75rem;
+    color: #52525b;
+  }
+
+  .slide-footer .dot {
+    color: #34d399;
+    margin: 0 0.6em;
+  }
+
+  /* Navigation hint */
+  .nav-hint {
+    position: fixed;
+    bottom: 1.5vh;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: #3f3f46;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  /* Slide counter */
+  .slide-counter {
+    position: fixed;
+    top: 2vh;
+    right: 3vw;
+    font-size: 0.75rem;
+    color: #3f3f46;
+    z-index: 100;
+  }
+
+  .slide-counter .current {
+    color: #34d399;
+  }
+
+  /* ==================== SLIDE 1: TITLE ==================== */
+  .title-slide {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .title-slide .logo-large {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 3vh;
+  }
+
+  .title-slide .logo-large svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 30px rgba(52, 211, 153, 0.25));
+  }
+
+  .title-slide h1 {
+    font-size: clamp(3rem, 6vw, 5rem);
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .title-slide .tagline {
+    font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+    color: #34d399;
+    font-weight: 500;
+    margin-top: 1.5vh;
+  }
+
+  .title-slide .blurb {
+    max-width: 700px;
+    font-size: clamp(0.9rem, 1.2vw, 1.1rem);
+    color: #71717a;
+    line-height: 1.8;
+    margin-top: 4vh;
+  }
+
+  .title-slide .blurb strong {
+    color: #d4d4d8;
+  }
+
+  .title-slide .blurb .accent {
+    color: #34d399;
+  }
+
+  .floating-icons {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .floating-icons span {
+    position: absolute;
+    font-size: 2rem;
+    opacity: 0.15;
+    animation: float linear infinite;
+  }
+
+  @keyframes float {
+    0% { transform: translateY(100vh) rotate(0deg); }
+    100% { transform: translateY(-10vh) rotate(360deg); }
+  }
+
+  /* ==================== WHY SLIDE ==================== */
+  .why-slide {
+    align-items: center;
+    text-align: center;
+    padding: 0 8vw 5vh;
+  }
+
+  .why-slide .slide-title {
+    font-size: clamp(1.8rem, 2.8vw, 2.5rem);
+    color: #34d399;
+    font-weight: 700;
+    margin-bottom: 5vh;
+    letter-spacing: -0.02em;
+  }
+
+  .why-slide .why-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5vh;
+    max-width: 700px;
+    text-align: left;
+  }
+
+  .why-slide .why-list li {
+    font-size: clamp(1rem, 1.3vw, 1.3rem);
+    color: #94a3b8;
+    line-height: 1.6;
+    padding-left: 2em;
+    position: relative;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .why-slide .why-list li::before {
+    content: '\203A';
+    position: absolute;
+    left: 0.5em;
+    color: #059669;
+    font-weight: 700;
+    font-size: 1.2em;
+  }
+
+  .why-slide .why-list li strong {
+    color: #e2e8f0;
+  }
+
+  /* ==================== FEATURE SLIDES ==================== */
+  .feature-slide {
+    padding: 0 6vw 5vh;
+  }
+
+  .feature-slide .slide-title {
+    font-size: clamp(0.8rem, 1vw, 1rem);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #34d399;
+    font-weight: 600;
+    margin-bottom: 4vh;
+  }
+
+  .feature-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2vw;
+    align-items: start;
+  }
+
+  .feature-card {
+    background: #141414;
+    border: 1px solid #27272a;
+    border-radius: 12px;
+    padding: 3vh 2vw;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .feature-card h3 {
+    font-size: clamp(1rem, 1.3vw, 1.3rem);
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 2vh;
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+  }
+
+  .feature-card h3 .bullet {
+    color: #34d399;
+    font-size: 1.2em;
+  }
+
+  .feature-card .detail-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2vh;
+  }
+
+  .feature-card .detail-list li {
+    font-size: clamp(0.78rem, 0.9vw, 0.9rem);
+    color: #a1a1aa;
+    line-height: 1.6;
+    padding-left: 1.2em;
+    position: relative;
+  }
+
+  .feature-card .detail-list li::before {
+    content: '\203A';
+    position: absolute;
+    left: 0;
+    color: #059669;
+    font-weight: 700;
+  }
+
+  /* ==================== SLIDE 3: SPAM + SECURITY (with screenshot) ==================== */
+  .security-slide {
+    padding: 0 6vw 5vh;
+  }
+
+  .security-slide .slide-title {
+    font-size: clamp(0.8rem, 1vw, 1rem);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #34d399;
+    font-weight: 600;
+    margin-bottom: 3vh;
+  }
+
+  .security-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3vw;
+    align-items: center;
+  }
+
+  .security-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2vh;
+  }
+
+  .security-details h3 {
+    font-size: clamp(1.3rem, 1.8vw, 1.8rem);
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.2;
+  }
+
+  .security-details .detail-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4vh;
+  }
+
+  .security-details .detail-list li {
+    font-size: clamp(0.85rem, 1vw, 1rem);
+    color: #a1a1aa;
+    line-height: 1.6;
+    padding-left: 1.4em;
+    position: relative;
+  }
+
+  .security-details .detail-list li::before {
+    content: '\203A';
+    position: absolute;
+    left: 0;
+    color: #059669;
+    font-weight: 700;
+  }
+
+  .security-details .detail-list li strong {
+    color: #d4d4d8;
+  }
+
+  .screenshot-frame {
+    background: #141414;
+    border: 1px solid #27272a;
+    border-radius: 12px;
+    padding: 1vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .screenshot-frame img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    max-height: 65vh;
+    object-fit: contain;
+  }
+
+  .screenshot-frame .placeholder {
+    width: 100%;
+    height: 50vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #3f3f46;
+    font-size: 0.85rem;
+    border: 1px dashed #27272a;
+    border-radius: 8px;
+  }
+
+  /* ==================== SLIDE 4: FEATURES (Quota + Attachments) ==================== */
+  .two-feature-slide {
+    padding: 0 6vw 5vh;
+  }
+
+  .two-feature-slide .slide-title {
+    font-size: clamp(0.8rem, 1vw, 1rem);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #34d399;
+    font-weight: 600;
+    margin-bottom: 4vh;
+  }
+
+  .two-feature-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3vw;
+    align-items: start;
+  }
+
+  /* ==================== SLIDE 5: PRICING + QR ==================== */
+  .pricing-slide {
+    justify-content: center;
+    align-items: center;
+    padding: 5vh 6vw;
+  }
+
+  .pricing-slide .content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4vw;
+    max-width: 1000px;
+    width: 100%;
+    align-items: center;
+  }
+
+  .pricing-block {
+    background: #141414;
+    border: 1px solid #27272a;
+    border-radius: 16px;
+    padding: 4vh 3vw;
+  }
+
+  .pricing-block h2 {
+    font-size: clamp(0.85rem, 1vw, 1rem);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #34d399;
+    font-weight: 600;
+    margin-bottom: 3vh;
+  }
+
+  .pricing-tier-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 2vh 0;
+    border-bottom: 1px solid #1a1a1e;
+  }
+
+  .pricing-tier-row:last-child {
+    border-bottom: none;
+  }
+
+  .tier-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5vh;
+  }
+
+  .tier-name {
+    font-size: clamp(0.9rem, 1.1vw, 1.1rem);
+    font-weight: 600;
+    color: #ffffff;
+  }
+
+  .tier-desc {
+    font-size: clamp(0.75rem, 0.85vw, 0.85rem);
+    color: #71717a;
+  }
+
+  .tier-price {
+    font-size: clamp(1.2rem, 1.6vw, 1.6rem);
+    font-weight: 700;
+    color: #34d399;
+    white-space: nowrap;
+  }
+
+  .tier-price.free-price {
+    color: #ffffff;
+  }
+
+  .tier-price .per {
+    font-size: 0.55em;
+    color: #71717a;
+    font-weight: 400;
+  }
+
+  /* QR block */
+  .qr-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.5vh;
+    text-align: center;
+  }
+
+  .qr-block #qr-code canvas {
+    border-radius: 12px;
+  }
+
+  .qr-block .url-display {
+    font-size: clamp(1.2rem, 1.6vw, 1.5rem);
+    color: #34d399;
+    font-weight: 600;
+  }
+
+  .qr-block .cta {
+    font-size: clamp(0.8rem, 0.95vw, 0.95rem);
+    color: #71717a;
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- Slide counter -->
+  <div class="slide-counter"><span class="current" id="counter-current">1</span> / <span id="counter-total">6</span></div>
+
+  <!-- SLIDE 1: TITLE -->
+  <div class="slide title-slide active" data-slide="0">
+    <div class="floating-icons" id="floating-icons"></div>
+    <div class="logo-large">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#34d399"/>
+            <stop offset="100%" stop-color="#059669"/>
+          </linearGradient>
+        </defs>
+        <rect width="32" height="32" rx="6" fill="#0a0a0a"/>
+        <path d="M8 7 Q5 14 10 19 L14 16 Q10 13 11 7Z" fill="url(#g)"/>
+        <path d="M24 7 Q27 14 22 19 L18 16 Q22 13 21 7Z" fill="url(#g)"/>
+        <rect x="7" y="16" width="18" height="11" rx="2" fill="url(#g)"/>
+        <path d="M7 16.5 L16 23 L25 16.5" fill="none" stroke="#0a0a0a" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h1>ChelaMail</h1>
+    <div class="tagline">Email infrastructure for AI agents</div>
+    <p class="blurb">
+      Agents register and get their own <span style="color:#34d399">@chela.email</span> address. Full-featured email managed through <strong>REST or MCP</strong>. Built for agents. Humans optional.
+    </p>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">AI-Native<span class="dot">&middot;</span>Email Infra</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: WHY I BUILT THIS -->
+  <div class="slide why-slide" data-slide="1">
+    <div class="slide-title">Why ChelaMail?</div>
+    <ul class="why-list">
+      <li><strong>Agents should have their own email</strong> &mdash; not borrow a human's inbox</li>
+      <li>Traditional email setup for your agent <strong>isn't simple</strong></li>
+      <li>Agents should be able to <strong>sign up for their own email</strong> with no human in the loop</li>
+    </ul>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">AI-Native<span class="dot">&middot;</span>Email Infra</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: FEATURES 1-3 -->
+  <div class="slide feature-slide" data-slide="2">
+    <div class="slide-title">Features</div>
+    <div class="feature-cards">
+
+      <div class="feature-card">
+        <h3><span class="bullet">&gt;</span> Real Mailboxes</h3>
+        <ul class="detail-list">
+          <li>Every agent gets a real <span style="color:#34d399">@chela.email</span> address</li>
+          <li>Full inbound and outbound delivery via Postmark</li>
+          <li>Dedicated Postmark outbound server per account</li>
+          <li>No shared IP reputation &mdash; your agent's sending is isolated</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <h3><span class="bullet">&gt;</span> REST + MCP</h3>
+        <ul class="detail-list">
+          <li>Full REST API for send, receive, search, and manage</li>
+          <li>Native Model Context Protocol (MCP) integration</li>
+          <li>Works with any agent harness: OpenClaw, Hermes Agent, Claude Desktop, PicoClaw, NanoClaw, and others</li>
+
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <h3><span class="bullet">&gt;</span> Agentic Payments</h3>
+        <ul class="detail-list">
+          <li>x402 payments with USDC on Base</li>
+          <li>Automated crypto wallet subscriptions or pay-as-you-go credit pack options</li>
+          <li>Stripe checkout available for HITL credit card payments (boring)</li>
+        </ul>
+      </div>
+
+    </div>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">AI-Native<span class="dot">&middot;</span>Email Infra</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: SPAM + SECURITY (with screenshot) -->
+  <div class="slide security-slide" data-slide="3">
+    <div class="slide-title">Spam + Security</div>
+    <div class="security-content">
+      <div class="security-details">
+        <h3>Quarantine &amp; Protection</h3>
+        <ul class="detail-list">
+          <li>Every inbound email is analyzed and <strong>spam-scored</strong></li>
+          <li>Suspicious messages are <strong>auto-quarantined</strong> &mdash; body and attachments withheld</li>
+          <li>Agent is notified and can <strong>inspect the quarantined content</strong> before deciding</li>
+          <li><strong>Release from quarantine</strong> with a single API call once reviewed</li>
+          <li>Detects <strong>prompt injection attempts</strong> embedded in email body</li>
+        </ul>
+      </div>
+      <div class="screenshot-frame">
+        <a href="chelamail-quarantine.png" target="_blank" style="display:block;cursor:zoom-in;">
+          <img src="chelamail-quarantine.png" alt="ChelaMail quarantine flow in action" onerror="this.parentElement.style.display='none';this.parentElement.parentElement.innerHTML='<div class=placeholder>Screenshot: chelamail-quarantine.png<br>(drop the image in the same folder)</div>';">
+        </a>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">AI-Native<span class="dot">&middot;</span>Email Infra</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: FEATURES (Quota + Attachments) -->
+  <div class="slide two-feature-slide" data-slide="4">
+    <div class="slide-title">Features</div>
+    <div class="two-feature-cards">
+
+      <div class="feature-card">
+        <h3><span class="bullet">&gt;</span> Quota-Aware</h3>
+        <ul class="detail-list">
+          <li>Every send response includes remaining outbound quota</li>
+          <li>Low-balance warnings returned inline so agents can react</li>
+
+          <li>XMTP wallet notifications for low balance and dunning events</li>
+          <li>Agents can check quota status before deciding to send</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <h3><span class="bullet">&gt;</span> Attachments</h3>
+        <ul class="detail-list">
+
+          <li>Served via time-limited signed download URLs</li>
+          <li>No public access &mdash; only the owning agent can retrieve</li>
+          <li>File metadata (name, size, content type) included in email records</li>
+          <li>Agent retrieves attachments on demand through the API</li>
+        </ul>
+      </div>
+
+    </div>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">AI-Native<span class="dot">&middot;</span>Email Infra</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: PRICING + QR -->
+  <div class="slide pricing-slide" data-slide="5">
+    <div class="content">
+
+      <div class="pricing-block">
+        <h2>Pricing</h2>
+
+        <div class="pricing-tier-row">
+          <div class="tier-info">
+            <div class="tier-name">Free</div>
+            <div class="tier-desc">Unlimited inbound, no outbound</div>
+          </div>
+          <div class="tier-price free-price">$0</div>
+        </div>
+
+        <div class="pricing-tier-row">
+          <div class="tier-info">
+            <div class="tier-name">Monthly</div>
+            <div class="tier-desc">500 outbound sends per block, recurring</div>
+          </div>
+          <div class="tier-price">$5 <span class="per">/ block / mo</span></div>
+        </div>
+
+        <div class="pricing-tier-row">
+          <div class="tier-info">
+            <div class="tier-name">Pay As You Go</div>
+            <div class="tier-desc">500 outbound sends per block, non-expiring</div>
+          </div>
+          <div class="tier-price">$8 <span class="per">/ block</span></div>
+        </div>
+      </div>
+
+      <div class="qr-block">
+        <div id="qr-code"></div>
+        <div class="url-display">chela.email</div>
+        <div class="cta">Scan to get started</div>
+      </div>
+
+    </div>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">AI-Native<span class="dot">&middot;</span>Email Infra</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="nav-hint">Arrow keys or click to navigate</div>
+
+<script>
+  // QR Code
+  var qr = qrcode(0, 'M');
+  qr.addData('https://chela.email');
+  qr.make();
+  var size = qr.getModuleCount();
+  var canvas = document.createElement('canvas');
+  var scale = 5;
+  var padding = 12;
+  canvas.width = size * scale + padding * 2;
+  canvas.height = size * scale + padding * 2;
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#141414';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (var row = 0; row < size; row++) {
+    for (var col = 0; col < size; col++) {
+      ctx.fillStyle = qr.isDark(row, col) ? '#34d399' : '#141414';
+      ctx.fillRect(col * scale + padding, row * scale + padding, scale, scale);
+    }
+  }
+  canvas.style.borderRadius = '12px';
+  canvas.style.width = '160px';
+  canvas.style.height = '160px';
+  document.getElementById('qr-code').appendChild(canvas);
+
+  // Navigation
+  var current = 0;
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+
+  document.getElementById('counter-total').textContent = total;
+
+  function goTo(n) {
+    if (n < 0 || n >= total) return;
+    slides[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    document.getElementById('counter-current').textContent = current + 1;
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault();
+      goTo(current + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      goTo(current - 1);
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (e.clientX > window.innerWidth / 2) {
+      goTo(current + 1);
+    } else {
+      goTo(current - 1);
+    }
+  });
+
+  // Floating icons
+  var icons = ['\u2709', '\u{1F4E8}', '\u{1F4E9}', '\u{1F4EC}', '\u{1F4ED}', '\u{1F9E6}', '@'];
+  var container = document.getElementById('floating-icons');
+  for (var i = 0; i < 18; i++) {
+    var span = document.createElement('span');
+    span.textContent = icons[i % icons.length];
+    span.style.left = (Math.random() * 95) + '%';
+    span.style.fontSize = (1.2 + Math.random() * 2) + 'rem';
+    span.style.animationDuration = (18 + Math.random() * 25) + 's';
+    span.style.animationDelay = -(Math.random() * 30) + 's';
+    container.appendChild(span);
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC Discord — Discord Agents Powered by Claude Code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'DM Sans', sans-serif;
+    background: #1e1f22;
+    color: #dbdee1;
+  }
+
+  .deck { width: 100vw; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    overflow: hidden;
+  }
+
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: -30%;
+    left: -20%;
+    width: 160%;
+    height: 160%;
+    background: radial-gradient(ellipse at 25% 35%, rgba(88, 101, 242, 0.06) 0%, transparent 55%),
+                radial-gradient(ellipse at 75% 65%, rgba(87, 242, 135, 0.03) 0%, transparent 50%);
+    z-index: 0;
+  }
+
+  .slide > * { position: relative; z-index: 1; }
+
+  .slide-footer {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 1.5vh 5vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #2b2d31;
+  }
+
+  .slide-footer .left { font-size: 0.75rem; color: #4e5058; font-family: 'DM Mono', monospace; }
+  .slide-footer .right { font-size: 0.75rem; color: #5865f2; }
+  .slide-footer .dot { color: #57f287; margin: 0 0.6em; }
+
+  .slide-counter {
+    position: fixed; top: 2vh; right: 3vw;
+    font-size: 0.75rem; color: #4e5058; z-index: 100;
+    font-family: 'DM Mono', monospace;
+  }
+  .slide-counter .current { color: #5865f2; }
+
+  .nav-hint {
+    position: fixed; bottom: 1.5vh; left: 50%; transform: translateX(-50%);
+    font-size: 0.7rem; color: #4e5058; z-index: 100; pointer-events: none;
+  }
+
+  /* ==================== TITLE ==================== */
+  .title-slide { align-items: center; text-align: center; }
+
+  .title-slide .logo-wrap {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: #5865f2;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 3vh;
+    box-shadow: 0 0 50px rgba(88, 101, 242, 0.25);
+    font-size: 2.5rem;
+  }
+
+  .title-slide h1 {
+    font-size: clamp(2.8rem, 5.5vw, 4.5rem);
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .title-slide .tagline {
+    font-size: clamp(1rem, 1.5vw, 1.3rem);
+    color: #5865f2;
+    font-weight: 600;
+    margin-top: 1.5vh;
+  }
+
+  .title-slide .blurb {
+    max-width: 720px;
+    font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+    color: #949ba4;
+    line-height: 1.8;
+    margin-top: 4vh;
+  }
+
+  .title-slide .blurb strong { color: #dbdee1; }
+  .title-slide .blurb .accent { color: #5865f2; }
+
+  .title-slide .quickstart {
+    margin-top: 4vh;
+    background: #2b2d31;
+    border: 1px solid #3f4147;
+    border-radius: 10px;
+    padding: 1.2vh 2.5vw;
+    font-family: 'DM Mono', monospace;
+    font-size: clamp(0.85rem, 1vw, 1rem);
+    color: #57f287;
+  }
+  .title-slide .quickstart .prompt { color: #4e5058; }
+
+  .floating-icons {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .floating-icons span {
+    position: absolute;
+    font-size: 2rem;
+    opacity: 0.15;
+    animation: float linear infinite;
+  }
+
+  @keyframes float {
+    0% { transform: translateY(100vh) rotate(0deg); }
+    100% { transform: translateY(-10vh) rotate(360deg); }
+  }
+
+  /* ==================== FEATURES ==================== */
+  .feature-slide { padding: 0 6vw 5vh; }
+
+  .feature-slide .slide-title {
+    font-size: clamp(0.8rem, 1vw, 1rem);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #5865f2;
+    font-weight: 700;
+    margin-bottom: 4vh;
+  }
+
+  .feature-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2vw;
+    align-items: start;
+  }
+
+  .feature-cards.two-col {
+    grid-template-columns: 1fr 1fr;
+    max-width: 900px;
+  }
+
+  .feature-card {
+    background: #2b2d31;
+    border: 1px solid #3f4147;
+    border-radius: 12px;
+    padding: 3vh 2vw;
+  }
+
+  .feature-card:hover { border-color: rgba(88, 101, 242, 0.3); }
+
+  .feature-card h3 {
+    font-size: clamp(1rem, 1.3vw, 1.3rem);
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 2vh;
+  }
+
+  .feature-card h3 .icon { margin-right: 0.5em; }
+
+  .feature-card .detail-list {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 1.2vh;
+  }
+
+  .feature-card .detail-list li {
+    font-size: clamp(0.78rem, 0.9vw, 0.9rem);
+    color: #b5bac1;
+    line-height: 1.6;
+    padding-left: 1.2em;
+    position: relative;
+  }
+
+  .feature-card .detail-list li::before {
+    content: '\2022';
+    position: absolute; left: 0;
+    color: #5865f2;
+    font-weight: 700;
+  }
+
+  .feature-card .detail-list li strong { color: #dbdee1; }
+
+  /* ==================== INFO + QR ==================== */
+  .info-slide {
+    align-items: center;
+    padding: 5vh 6vw;
+  }
+
+  .info-slide .content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4vw;
+    max-width: 1000px;
+    width: 100%;
+    align-items: center;
+  }
+
+  .info-block {
+    background: #2b2d31;
+    border: 1px solid #3f4147;
+    border-radius: 16px;
+    padding: 4vh 3vw;
+  }
+
+  .info-block h2 {
+    font-size: clamp(0.85rem, 1vw, 1rem);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #5865f2;
+    font-weight: 700;
+    margin-bottom: 2.5vh;
+  }
+
+  .info-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8vw;
+    padding: 0.8vh 0;
+    border-bottom: 1px solid #35373c;
+  }
+  .info-row:last-child { border-bottom: none; }
+
+  .info-label {
+    font-size: clamp(0.75rem, 0.85vw, 0.85rem);
+    color: #4e5058;
+    min-width: 80px;
+    font-weight: 600;
+  }
+
+  .info-value {
+    font-size: clamp(0.75rem, 0.85vw, 0.85rem);
+    color: #dbdee1;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .info-value a {
+    color: #5865f2;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .info-value a:hover { color: #7983f5; }
+
+  .qr-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.5vh;
+    text-align: center;
+  }
+
+  .qr-block #qr-code canvas { border-radius: 12px; }
+
+  .qr-block .url-display {
+    font-size: clamp(1rem, 1.3vw, 1.2rem);
+    color: #5865f2;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .qr-block .cta {
+    font-size: clamp(0.8rem, 0.95vw, 0.95rem);
+    color: #949ba4;
+  }
+
+  /* ==================== WHY SLIDE ==================== */
+  .why-slide {
+    align-items: center;
+    text-align: center;
+    padding: 0 8vw 5vh;
+  }
+
+  .why-slide .slide-title {
+    font-size: clamp(1.8rem, 2.8vw, 2.5rem);
+    color: #5865f2;
+    font-weight: 800;
+    margin-bottom: 5vh;
+    letter-spacing: -0.02em;
+  }
+
+  .why-slide .why-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5vh;
+    max-width: 700px;
+    text-align: left;
+  }
+
+  .why-slide .why-list li {
+    font-size: clamp(1rem, 1.3vw, 1.3rem);
+    color: #b5bac1;
+    line-height: 1.6;
+    padding-left: 2em;
+    position: relative;
+  }
+
+  .why-slide .why-list li::before {
+    content: '\2022';
+    position: absolute;
+    left: 0.5em;
+    color: #5865f2;
+    font-weight: 700;
+    font-size: 1.2em;
+  }
+
+  .why-slide .why-list li strong {
+    color: #dbdee1;
+  }
+
+  /* ==================== DIAGRAM SLIDE ==================== */
+  .diagram-slide {
+    padding: 0 6vw 5vh;
+    align-items: center;
+  }
+
+  .diagram-slide .slide-title {
+    font-size: clamp(0.8rem, 1vw, 1rem);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #5865f2;
+    font-weight: 700;
+    margin-bottom: 4vh;
+    align-self: flex-start;
+  }
+
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    gap: 1.5vw;
+    flex-wrap: nowrap;
+  }
+
+  .flow-box {
+    background: #2b2d31;
+    border: 1px solid #3f4147;
+    border-radius: 12px;
+    padding: 2vh 1.5vw;
+    text-align: center;
+    min-width: 120px;
+    flex-shrink: 0;
+  }
+
+  .flow-box.highlight {
+    border-color: #5865f2;
+    box-shadow: 0 0 20px rgba(88, 101, 242, 0.15);
+  }
+
+  .flow-box.green {
+    border-color: #57f287;
+    box-shadow: 0 0 20px rgba(87, 242, 135, 0.1);
+  }
+
+  .flow-box .box-icon {
+    font-size: 1.8rem;
+    display: block;
+    margin-bottom: 0.8vh;
+  }
+
+  .flow-box .box-title {
+    font-size: clamp(0.8rem, 0.95vw, 0.95rem);
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.4vh;
+  }
+
+  .flow-box .box-desc {
+    font-size: clamp(0.65rem, 0.75vw, 0.75rem);
+    color: #949ba4;
+    line-height: 1.4;
+  }
+
+  .flow-arrow {
+    color: #5865f2;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .flow-arrow.return {
+    color: #57f287;
+  }
+
+  .flow-labels {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 900px;
+    margin-top: 3vh;
+  }
+
+  .flow-label {
+    font-size: clamp(0.65rem, 0.75vw, 0.75rem);
+    color: #4e5058;
+    font-family: 'DM Mono', monospace;
+    text-align: center;
+  }
+
+  .flow-label .step-num {
+    color: #5865f2;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+  <div class="slide-counter"><span class="current" id="counter-current">1</span> / <span id="counter-total">6</span></div>
+
+  <!-- SLIDE 1: TITLE -->
+  <div class="slide title-slide active" data-slide="0">
+    <div class="floating-icons" id="floating-icons"></div>
+    <div class="logo-wrap">&#128172;</div>
+    <h1>CC Discord</h1>
+    <div class="tagline">Discord agents powered by Claude Code</div>
+    <p class="blurb">
+      One autonomous <strong>Claude Code agent per channel</strong>. Messages flow through a relay, Claude processes them, replies go back to Discord. No API key needed &mdash; runs on your existing <span class="accent">Claude subscription</span>.
+    </p>
+    <div class="quickstart"><span class="prompt">$</span> bunx @hoverlover/cc-discord</div>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">Discord<span class="dot">&middot;</span>Claude Code</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: WHY I BUILT THIS -->
+  <div class="slide why-slide" data-slide="1">
+    <div class="slide-title">Why CC Discord?</div>
+    <ul class="why-list">
+      <li>Anthropic was <strong>banning people</strong> using their subscriptions with OpenClaw</li>
+      <li>I wanted to use my <strong>Claude subscription</strong> with an agent &mdash; legitimately</li>
+      <li>I wanted <strong>prompt steering</strong> through my agent &mdash; no stale replies</li>
+    </ul>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">Discord<span class="dot">&middot;</span>Claude Code</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: CORE FEATURES -->
+  <div class="slide feature-slide" data-slide="2">
+    <div class="slide-title">Core Features</div>
+    <div class="feature-cards">
+      <div class="feature-card">
+        <h3><span class="icon">&#128225;</span> Per-Channel Agents</h3>
+        <ul class="detail-list">
+          <li><strong>One Claude agent per channel</strong>, plus per-thread agents</li>
+          <li>Each agent has independent conversation context</li>
+          <li>Messages stored in SQLite, delivered via hooks</li>
+          <li>Automatic <strong>catch-up</strong> of missed messages on restart</li>
+        </ul>
+      </div>
+      <div class="feature-card">
+        <h3><span class="icon">&#9889;</span> Send Steering</h3>
+        <ul class="detail-list">
+          <li>If new messages arrive while Claude is composing, the reply is <strong>blocked</strong></li>
+          <li>Claude is forced to <strong>revise</strong> to address all messages</li>
+          <li>No stale or out-of-context responses</li>
+          <li>Ensures every message is acknowledged</li>
+        </ul>
+      </div>
+      <div class="feature-card">
+        <h3><span class="icon">&#128270;</span> Live Trace Threads</h3>
+        <ul class="detail-list">
+          <li>Auto-created thread per channel showing <strong>live agent activity</strong></li>
+          <li>Watch tool calls, status changes in real time</li>
+          <li>Transparent &mdash; users see what the agent is doing</li>
+          <li>Keeps main channel clean, traces in their own thread</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">Discord<span class="dot">&middot;</span>Claude Code</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: MORE FEATURES -->
+  <div class="slide feature-slide" data-slide="3">
+    <div class="slide-title">Features</div>
+    <div class="feature-cards">
+      <div class="feature-card">
+        <h3><span class="icon">&#128187;</span> Thread Support</h3>
+        <ul class="detail-list">
+          <li>Threads auto-discovered &mdash; agents spawn within seconds</li>
+          <li>Each thread gets its <strong>own independent agent</strong></li>
+          <li>Thread context tagged so agents know where they are</li>
+          <li>Typing indicators and replies work inside threads</li>
+        </ul>
+      </div>
+      <div class="feature-card">
+        <h3><span class="icon">&#128274;</span> Safety + Reliability</h3>
+        <ul class="detail-list">
+          <li><strong>Bash safety guard</strong> blocks risky background operations</li>
+          <li><strong>Stuck agent detection</strong> &mdash; auto-restart after 15min stale</li>
+          <li>Typing indicators with configurable <strong>fallback messages</strong></li>
+          <li>Busy notifications when Claude is already working</li>
+        </ul>
+      </div>
+      <div class="feature-card">
+        <h3><span class="icon">&#128206;</span> Attachments + Memory</h3>
+        <ul class="detail-list">
+          <li>Discord attachments downloaded and delivered to Claude as files</li>
+          <li>Auto-cleanup after Claude reads them (configurable TTL)</li>
+          <li><strong>Cross-session memory</strong> backed by SQLite</li>
+          <li>Relevant prior turns included as context on each message</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">Discord<span class="dot">&middot;</span>Claude Code</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: HOW IT WORKS DIAGRAM -->
+  <div class="slide diagram-slide" data-slide="4">
+    <div class="slide-title">How It Works</div>
+
+    <div class="flow-diagram">
+      <div class="flow-box">
+        <span class="box-icon">&#128100;</span>
+        <div class="box-title">Discord User</div>
+        <div class="box-desc">Sends a message<br>in a channel</div>
+      </div>
+
+      <div class="flow-arrow">&#8594;</div>
+
+      <div class="flow-box highlight">
+        <span class="box-icon">&#128225;</span>
+        <div class="box-title">Relay Server</div>
+        <div class="box-desc">Stores in SQLite<br>Starts typing indicator</div>
+      </div>
+
+      <div class="flow-arrow">&#8594;</div>
+
+      <div class="flow-box highlight">
+        <span class="box-icon">&#128268;</span>
+        <div class="box-title">Hook Delivery</div>
+        <div class="box-desc">check-discord-messages<br>delivers to Claude</div>
+      </div>
+
+      <div class="flow-arrow">&#8594;</div>
+
+      <div class="flow-box green">
+        <span class="box-icon">&#129302;</span>
+        <div class="box-title">Claude Agent</div>
+        <div class="box-desc">Processes message<br>Calls send-discord</div>
+      </div>
+
+      <div class="flow-arrow">&#8594;</div>
+
+      <div class="flow-box highlight">
+        <span class="box-icon">&#128737;</span>
+        <div class="box-title">Steer Hook</div>
+        <div class="box-desc">New messages?<br>Force revision</div>
+      </div>
+
+      <div class="flow-arrow return">&#8594;</div>
+
+      <div class="flow-box">
+        <span class="box-icon">&#128172;</span>
+        <div class="box-title">Discord</div>
+        <div class="box-desc">Reply posted<br>Typing stops</div>
+      </div>
+    </div>
+
+    <div class="flow-labels">
+      <div class="flow-label"><span class="step-num">1</span> Message sent</div>
+      <div class="flow-label"><span class="step-num">2</span> Stored + queued</div>
+      <div class="flow-label"><span class="step-num">3</span> Hook delivers</div>
+      <div class="flow-label"><span class="step-num">4</span> Agent processes</div>
+      <div class="flow-label"><span class="step-num">5</span> Steer check</div>
+      <div class="flow-label"><span class="step-num">6</span> Reply delivered</div>
+    </div>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">Discord<span class="dot">&middot;</span>Claude Code</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: INFO + QR -->
+  <div class="slide info-slide" data-slide="5">
+    <div class="content">
+      <div class="info-block">
+        <h2>Details</h2>
+        <div class="info-row">
+          <span class="info-label">GitHub</span>
+          <span class="info-value"><a href="https://github.com/hoverlover/cc-discord">hoverlover/cc-discord</a></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">npm</span>
+          <span class="info-value"><a href="https://www.npmjs.com/package/@hoverlover/cc-discord">@hoverlover/cc-discord</a></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Stack</span>
+          <span class="info-value">Bun, Express, SQLite, Discord.js</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">License</span>
+          <span class="info-value">MIT</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Built by</span>
+          <span class="info-value">Chad Boyd</span>
+        </div>
+
+        <h2 style="margin-top: 2.5vh;">Quick Start</h2>
+        <div style="background:#1e1f22;border:1px solid #3f4147;border-radius:8px;padding:1.2vh 1.5vw;margin-top:1vh;">
+          <span style="color:#4e5058;font-family:'DM Mono',monospace;font-size:0.85rem;">$</span>
+          <span style="color:#57f287;font-family:'DM Mono',monospace;font-size:0.85rem;"> bunx @hoverlover/cc-discord</span>
+        </div>
+        <div style="color:#4e5058;font-size:0.75rem;margin-top:0.8vh;">Requires Bun, Claude Code CLI authenticated, Discord bot token</div>
+      </div>
+
+      <div class="qr-block">
+        <div id="qr-code"></div>
+        <div class="url-display">github.com/hoverlover/cc-discord</div>
+        <div class="cta">Scan to view the repo</div>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <div class="left">AI Collective SGF &mdash; Demo Night &mdash; April 16, 2026</div>
+      <div class="right">Discord<span class="dot">&middot;</span>Claude Code</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="nav-hint">Arrow keys or click to navigate</div>
+
+<script>
+  var qr = qrcode(0, 'M');
+  qr.addData('https://github.com/hoverlover/cc-discord');
+  qr.make();
+  var size = qr.getModuleCount();
+  var canvas = document.createElement('canvas');
+  var scale = 5, padding = 12;
+  canvas.width = size * scale + padding * 2;
+  canvas.height = size * scale + padding * 2;
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#2b2d31';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (var r = 0; r < size; r++)
+    for (var c = 0; c < size; c++) {
+      ctx.fillStyle = qr.isDark(r, c) ? '#5865f2' : '#2b2d31';
+      ctx.fillRect(c * scale + padding, r * scale + padding, scale, scale);
+    }
+  canvas.style.borderRadius = '12px';
+  canvas.style.width = '160px';
+  canvas.style.height = '160px';
+  document.getElementById('qr-code').appendChild(canvas);
+
+  var current = 0;
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  document.getElementById('counter-total').textContent = total;
+
+  function goTo(n) {
+    if (n < 0 || n >= total) return;
+    slides[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    document.getElementById('counter-current').textContent = current + 1;
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goTo(current - 1); }
+  });
+
+  document.addEventListener('click', function(e) {
+    e.clientX > window.innerWidth / 2 ? goTo(current + 1) : goTo(current - 1);
+  });
+
+  // Floating icons
+  var icons = ['\u{1F4AC}', '\u{1F916}', '#', '\u{1F50A}', '\u{1F4E2}', '\u{1F3AE}', '\u{1F4F1}'];
+  var container = document.getElementById('floating-icons');
+  for (var i = 0; i < 18; i++) {
+    var span = document.createElement('span');
+    span.textContent = icons[i % icons.length];
+    span.style.left = (Math.random() * 95) + '%';
+    span.style.fontSize = (1.2 + Math.random() * 2) + 'rem';
+    span.style.animationDuration = (18 + Math.random() * 25) + 's';
+    span.style.animationDelay = -(Math.random() * 30) + 's';
+    container.appendChild(span);
+  }
+</script>
+
+</body>
+</html>
