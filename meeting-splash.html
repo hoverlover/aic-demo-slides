@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Collective Springfield</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a, #1a0a1a, #0a1a1a, #1a1a0a, #0a0a0a);
+            background-size: 400% 400%;
+            animation: bg-cycle 30s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            image-rendering: pixelated;
+        }
+
+        @keyframes bg-cycle {
+            0% { background-position: 0% 50%; }
+            25% { background-position: 100% 50%; }
+            50% { background-position: 100% 100%; }
+            75% { background-position: 0% 100%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Neural network canvas */
+        #neuralNet {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* Data stream canvas */
+        #dataStream {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            opacity: 0.6;
+        }
+
+        /* Main content */
+        .content {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 80px;
+        }
+
+        /* Logo container */
+        .logo-container {
+            position: relative;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .logo {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            filter: contrast(1.2) saturate(1.3);
+            box-shadow:
+                0 0 20px rgba(255, 120, 0, 0.8),
+                0 0 40px rgba(255, 120, 0, 0.5),
+                0 0 60px rgba(0, 150, 255, 0.5),
+                inset 0 0 30px rgba(255, 255, 255, 0.2);
+            animation: pulse-glow 2s ease-in-out infinite alternate;
+        }
+
+        /* Circuit border around logo */
+        .circuit-border {
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            right: -20px;
+            bottom: -20px;
+            border: 3px solid transparent;
+            border-radius: 50%;
+            background:
+                linear-gradient(#0a0a0a, #0a0a0a) padding-box,
+                linear-gradient(var(--angle), #ff6b00, #00a8ff, #00ff00, #ff6b00) border-box;
+            animation: rotate-gradient 4s linear infinite;
+        }
+
+        @property --angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        @keyframes rotate-gradient {
+            to { --angle: 360deg; }
+        }
+
+        /* Orbiting nodes around logo */
+        .orbit {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 260px;
+            height: 260px;
+            margin: -130px 0 0 -130px;
+            border: 2px dashed rgba(0, 168, 255, 0.3);
+            border-radius: 50%;
+            animation: orbit-rotate 20s linear infinite;
+        }
+
+        .node {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #00ff00;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
+            animation: node-pulse 1s ease-in-out infinite alternate;
+        }
+
+        .node:nth-child(1) { top: -6px; left: 50%; margin-left: -6px; background: #ff6b00; box-shadow: 0 0 10px #ff6b00; }
+        .node:nth-child(2) { bottom: -6px; left: 50%; margin-left: -6px; background: #00a8ff; box-shadow: 0 0 10px #00a8ff; }
+        .node:nth-child(3) { left: -6px; top: 50%; margin-top: -6px; }
+        .node:nth-child(4) { right: -6px; top: 50%; margin-top: -6px; background: #ffff00; box-shadow: 0 0 10px #ffff00; }
+
+        /* Title */
+        .title {
+            text-align: center;
+        }
+
+        .title-main {
+            font-size: 42px;
+            color: #fff;
+            text-shadow:
+                4px 4px 0 #ff6b00,
+                8px 8px 0 #00a8ff,
+                0 0 20px #ff6b00,
+                0 0 40px #00a8ff;
+            letter-spacing: 4px;
+            animation: color-shift 3s ease-in-out infinite, title-glitch 5s ease-in-out infinite;
+        }
+
+        .title-sub {
+            font-size: 28px;
+            color: #00ff00;
+            margin-top: 15px;
+            text-shadow:
+                3px 3px 0 #008800,
+                0 0 20px #00ff00;
+            animation: typing 2s steps(11) forwards, blink-caret 0.5s step-end infinite alternate;
+            overflow: hidden;
+            white-space: nowrap;
+            border-right: 4px solid #00ff00;
+            width: 0;
+            display: inline-block;
+        }
+
+        .title-location {
+            font-size: 18px;
+            color: #00a8ff;
+            margin-top: 20px;
+            text-shadow:
+                2px 2px 0 #005588,
+                0 0 15px #00a8ff;
+            animation: fade-in 1s ease-out 2.5s forwards;
+            opacity: 0;
+        }
+
+        .title-tagline {
+            font-size: 12px;
+            color: #ffff00;
+            margin-top: 25px;
+            text-shadow: 0 0 10px #ffff00;
+            animation: pulse-text 2s ease-in-out infinite;
+        }
+
+        /* AI-themed floating elements */
+        .ai-element {
+            position: fixed;
+            font-size: 20px;
+            z-index: 5;
+            animation: ai-float 15s linear infinite;
+            opacity: 0.8;
+        }
+
+        /* Binary rain */
+        .binary {
+            position: fixed;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            color: #00ff00;
+            opacity: 0.4;
+            animation: binary-fall linear infinite;
+            z-index: 2;
+            text-shadow: 0 0 5px #00ff00;
+        }
+
+        /* Bottom bar with AI-themed scrolling text */
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(90deg, #ff6b00, #00a8ff, #00ff00, #ff6b00);
+            background-size: 300% 100%;
+            animation: gradient-scroll 5s linear infinite;
+            padding: 12px 0;
+            overflow: hidden;
+            z-index: 20;
+        }
+
+        .scroll-text {
+            display: inline-block;
+            white-space: nowrap;
+            animation: scroll-left 20s linear infinite;
+            font-size: 14px;
+            color: #000;
+            text-shadow: 1px 1px 0 #fff;
+        }
+
+        /* Circuit corner decorations */
+        .corner {
+            position: fixed;
+            width: 80px;
+            height: 80px;
+            z-index: 15;
+        }
+
+        .corner-tl { top: 20px; left: 20px; }
+        .corner-tr { top: 20px; right: 20px; transform: scaleX(-1); }
+        .corner-bl { bottom: 70px; left: 20px; transform: scaleY(-1); }
+        .corner-br { bottom: 70px; right: 20px; transform: scale(-1); }
+
+        .corner svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Neuron pulse indicators */
+        .neuron-indicator {
+            position: fixed;
+            display: flex;
+            gap: 8px;
+            z-index: 15;
+        }
+
+        .neuron-indicator.top { top: 15px; left: 50%; transform: translateX(-50%); }
+        .neuron-indicator.bottom { bottom: 70px; left: 50%; transform: translateX(-50%); }
+
+        .neuron-dot {
+            width: 8px;
+            height: 8px;
+            background: #00ff00;
+            border-radius: 50%;
+            animation: neuron-fire 2s ease-in-out infinite;
+        }
+
+        .neuron-dot:nth-child(2) { animation-delay: 0.2s; background: #ff6b00; }
+        .neuron-dot:nth-child(3) { animation-delay: 0.4s; background: #00a8ff; }
+        .neuron-dot:nth-child(4) { animation-delay: 0.6s; background: #ffff00; }
+        .neuron-dot:nth-child(5) { animation-delay: 0.8s; background: #ff00ff; }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        @keyframes pulse-glow {
+            0% {
+                box-shadow:
+                    0 0 20px rgba(255, 120, 0, 0.8),
+                    0 0 40px rgba(255, 120, 0, 0.5),
+                    0 0 60px rgba(0, 150, 255, 0.5);
+            }
+            100% {
+                box-shadow:
+                    0 0 30px rgba(255, 120, 0, 1),
+                    0 0 60px rgba(255, 120, 0, 0.7),
+                    0 0 90px rgba(0, 150, 255, 0.7);
+            }
+        }
+
+        @keyframes orbit-rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes node-pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.3); }
+        }
+
+        @keyframes color-shift {
+            0%, 100% {
+                text-shadow:
+                    4px 4px 0 #ff6b00,
+                    8px 8px 0 #00a8ff,
+                    0 0 20px #ff6b00;
+            }
+            50% {
+                text-shadow:
+                    4px 4px 0 #00a8ff,
+                    8px 8px 0 #ff6b00,
+                    0 0 20px #00a8ff;
+            }
+        }
+
+        @keyframes title-glitch {
+            0%, 95%, 100% { transform: translateX(0); }
+            96% { transform: translateX(-5px); }
+            97% { transform: translateX(5px); }
+            98% { transform: translateX(-3px); }
+            99% { transform: translateX(3px); }
+        }
+
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 11ch; }
+        }
+
+        @keyframes blink-caret {
+            50% { border-color: transparent; }
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse-text {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes ai-float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            5% { opacity: 0.8; }
+            95% { opacity: 0.8; }
+            100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        }
+
+        @keyframes binary-fall {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+
+        @keyframes scroll-left {
+            0% { transform: translateX(50%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        @keyframes gradient-scroll {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+
+        @keyframes neuron-fire {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 15px currentColor; }
+        }
+
+        @keyframes circuit-pulse {
+            0%, 100% { stroke-opacity: 0.3; }
+            50% { stroke-opacity: 1; }
+        }
+
+        /* Scanline overlay */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1),
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 100;
+            animation: scanline-flicker 0.1s infinite;
+        }
+
+        @keyframes scanline-flicker {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 0.85; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="neuralNet"></canvas>
+    <canvas id="dataStream"></canvas>
+
+    <div class="content">
+        <div class="logo-container">
+            <div class="circuit-border"></div>
+            <div class="orbit">
+                <div class="node"></div>
+                <div class="node"></div>
+                <div class="node"></div>
+                <div class="node"></div>
+            </div>
+            <!-- SVG Recreation of AI Collective Logo -->
+            <svg class="logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <radialGradient id="swirlGradient" cx="40%" cy="40%" r="70%">
+                        <stop offset="0%" stop-color="#ff6b00"/>
+                        <stop offset="50%" stop-color="#ff8533"/>
+                        <stop offset="70%" stop-color="#33b5e5"/>
+                        <stop offset="100%" stop-color="#0099cc"/>
+                    </radialGradient>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                <!-- Swirl background -->
+                <circle cx="100" cy="100" r="100" fill="url(#swirlGradient)"/>
+                <!-- Swirl texture lines -->
+                <g opacity="0.3">
+                    <path d="M100,10 Q150,50 140,100 Q130,150 80,170 Q30,190 20,140 Q10,90 50,50 Q90,10 100,10"
+                          stroke="#fff" stroke-width="2" fill="none" opacity="0.5"/>
+                    <path d="M90,20 Q140,60 130,100 Q120,140 70,160"
+                          stroke="#fff" stroke-width="1.5" fill="none" opacity="0.4"/>
+                    <path d="M110,30 Q160,70 150,110 Q140,150 90,170"
+                          stroke="#fff" stroke-width="1" fill="none" opacity="0.3"/>
+                </g>
+                <!-- The C letter -->
+                <path d="M135,65
+                         A50,50 0 1,0 135,135
+                         L135,120
+                         A35,35 0 1,1 135,80
+                         Z"
+                      fill="#fff" filter="url(#glow)"/>
+            </svg>
+        </div>
+
+        <div class="title">
+            <div class="title-main">AI COLLECTIVE</div>
+            <div class="title-sub">SPRINGFIELD</div>
+            <div class="title-location">📍 SPRINGFIELD, MO</div>
+            <div class="title-tagline">[ NEURAL NETWORKS ACTIVATED ]</div>
+        </div>
+    </div>
+
+    <!-- Circuit corner decorations -->
+    <div class="corner corner-tl">
+        <svg viewBox="0 0 80 80">
+            <path d="M5 80 L5 20 Q5 5 20 5 L80 5" stroke="#ff6b00" stroke-width="2" fill="none" style="animation: circuit-pulse 2s ease-in-out infinite;">
+                <animate attributeName="stroke-dasharray" values="0,200;200,0" dur="3s" repeatCount="indefinite"/>
+            </path>
+            <circle cx="5" cy="80" r="4" fill="#00ff00">
+                <animate attributeName="r" values="3;5;3" dur="1s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="80" cy="5" r="4" fill="#00a8ff">
+                <animate attributeName="r" values="3;5;3" dur="1s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="20" cy="20" r="3" fill="#ffff00">
+                <animate attributeName="opacity" values="0.5;1;0.5" dur="0.5s" repeatCount="indefinite"/>
+            </circle>
+        </svg>
+    </div>
+    <div class="corner corner-tr">
+        <svg viewBox="0 0 80 80">
+            <path d="M5 80 L5 20 Q5 5 20 5 L80 5" stroke="#00a8ff" stroke-width="2" fill="none">
+                <animate attributeName="stroke-dasharray" values="0,200;200,0" dur="3s" repeatCount="indefinite"/>
+            </path>
+            <circle cx="5" cy="80" r="4" fill="#ff6b00">
+                <animate attributeName="r" values="3;5;3" dur="1s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="80" cy="5" r="4" fill="#00ff00">
+                <animate attributeName="r" values="3;5;3" dur="1s" repeatCount="indefinite"/>
+            </circle>
+        </svg>
+    </div>
+    <div class="corner corner-bl">
+        <svg viewBox="0 0 80 80">
+            <path d="M5 80 L5 20 Q5 5 20 5 L80 5" stroke="#00ff00" stroke-width="2" fill="none">
+                <animate attributeName="stroke-dasharray" values="0,200;200,0" dur="3s" repeatCount="indefinite"/>
+            </path>
+            <circle cx="5" cy="80" r="4" fill="#00a8ff">
+                <animate attributeName="r" values="3;5;3" dur="1s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="80" cy="5" r="4" fill="#ff6b00">
+                <animate attributeName="r" values="3;5;3" dur="1s" repeatCount="indefinite"/>
+            </circle>
+        </svg>
+    </div>
+    <div class="corner corner-br">
+        <svg viewBox="0 0 80 80">
+            <path d="M5 80 L5 20 Q5 5 20 5 L80 5" stroke="#ffff00" stroke-width="2" fill="none">
+                <animate attributeName="stroke-dasharray" values="0,200;200,0" dur="3s" repeatCount="indefinite"/>
+            </path>
+            <circle cx="5" cy="80" r="4" fill="#ff00ff">
+                <animate attributeName="r" values="3;5;3" dur="1s" repeatCount="indefinite"/>
+            </circle>
+            <circle cx="80" cy="5" r="4" fill="#00ff00">
+                <animate attributeName="r" values="3;5;3" dur="1s" repeatCount="indefinite"/>
+            </circle>
+        </svg>
+    </div>
+
+    <!-- Neuron pulse indicators -->
+    <div class="neuron-indicator top">
+        <div class="neuron-dot"></div>
+        <div class="neuron-dot"></div>
+        <div class="neuron-dot"></div>
+        <div class="neuron-dot"></div>
+        <div class="neuron-dot"></div>
+    </div>
+
+    <!-- Scrolling bottom bar -->
+    <div class="bottom-bar">
+        <div class="scroll-text">
+            🤖 WELCOME TO AI COLLECTIVE SPRINGFIELD 🤖 ★ MACHINE LEARNING ★ NEURAL NETWORKS ★ DEEP LEARNING ★ COMPUTER VISION ★ NLP ★ GENERATIVE AI ★ CONNECT • LEARN • BUILD • INNOVATE ★ THE FUTURE OF AI IS HERE ★ 🤖 WELCOME TO AI COLLECTIVE SPRINGFIELD 🤖
+        </div>
+    </div>
+
+    <!-- Scanline overlay for CRT effect -->
+    <div class="scanlines"></div>
+
+    <script>
+        // Neural network visualization
+        const neuralCanvas = document.getElementById('neuralNet');
+        const neuralCtx = neuralCanvas.getContext('2d');
+
+        // Data stream canvas
+        const dataCanvas = document.getElementById('dataStream');
+        const dataCtx = dataCanvas.getContext('2d');
+
+        function resizeCanvases() {
+            neuralCanvas.width = dataCanvas.width = window.innerWidth;
+            neuralCanvas.height = dataCanvas.height = window.innerHeight;
+        }
+        resizeCanvases();
+        window.addEventListener('resize', resizeCanvases);
+
+        // Neural network nodes
+        class NeuralNode {
+            constructor() {
+                this.x = Math.random() * neuralCanvas.width;
+                this.y = Math.random() * neuralCanvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.radius = Math.random() * 3 + 2;
+                this.color = ['#ff6b00', '#00a8ff', '#00ff00', '#ffff00'][Math.floor(Math.random() * 4)];
+                this.pulse = Math.random() * Math.PI * 2;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.pulse += 0.05;
+
+                if (this.x < 0 || this.x > neuralCanvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > neuralCanvas.height) this.vy *= -1;
+            }
+
+            draw() {
+                const pulseRadius = this.radius + Math.sin(this.pulse) * 2;
+                neuralCtx.beginPath();
+                neuralCtx.arc(this.x, this.y, pulseRadius, 0, Math.PI * 2);
+                neuralCtx.fillStyle = this.color;
+                neuralCtx.fill();
+                neuralCtx.shadowBlur = 10;
+                neuralCtx.shadowColor = this.color;
+            }
+        }
+
+        const nodes = [];
+        for (let i = 0; i < 50; i++) {
+            nodes.push(new NeuralNode());
+        }
+
+        // Draw connections between nearby nodes
+        function drawConnections() {
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 150) {
+                        const opacity = (1 - dist / 150) * 0.5;
+                        neuralCtx.beginPath();
+                        neuralCtx.moveTo(nodes[i].x, nodes[i].y);
+                        neuralCtx.lineTo(nodes[j].x, nodes[j].y);
+                        neuralCtx.strokeStyle = `rgba(0, 168, 255, ${opacity})`;
+                        neuralCtx.lineWidth = 1;
+                        neuralCtx.stroke();
+
+                        // Draw signal traveling along connection
+                        if (Math.random() < 0.01) {
+                            const signalPos = Math.random();
+                            const signalX = nodes[i].x + (nodes[j].x - nodes[i].x) * signalPos;
+                            const signalY = nodes[i].y + (nodes[j].y - nodes[i].y) * signalPos;
+                            neuralCtx.beginPath();
+                            neuralCtx.arc(signalX, signalY, 3, 0, Math.PI * 2);
+                            neuralCtx.fillStyle = '#00ff00';
+                            neuralCtx.fill();
+                        }
+                    }
+                }
+            }
+        }
+
+        function animateNeural() {
+            neuralCtx.fillStyle = 'rgba(10, 10, 10, 0.1)';
+            neuralCtx.fillRect(0, 0, neuralCanvas.width, neuralCanvas.height);
+
+            drawConnections();
+
+            nodes.forEach(node => {
+                node.update();
+                node.draw();
+            });
+
+            requestAnimationFrame(animateNeural);
+        }
+
+        animateNeural();
+
+        // Matrix-style data stream with AI terms
+        const aiTerms = ['AI', '01', '10', 'ML', 'NN', 'GPU', 'TPU', 'LLM', 'AGI', 'NLP', 'CNN', 'RNN', 'GAN', 'GPT', 'API'];
+        const dataStreams = [];
+
+        class DataStream {
+            constructor() {
+                this.x = Math.random() * dataCanvas.width;
+                this.y = Math.random() * -500;
+                this.speed = Math.random() * 2 + 1;
+                this.chars = [];
+                const length = Math.floor(Math.random() * 15) + 5;
+                for (let i = 0; i < length; i++) {
+                    this.chars.push({
+                        char: aiTerms[Math.floor(Math.random() * aiTerms.length)],
+                        opacity: 1 - (i / length) * 0.8
+                    });
+                }
+            }
+
+            update() {
+                this.y += this.speed;
+                if (this.y > dataCanvas.height + 500) {
+                    this.y = -500;
+                    this.x = Math.random() * dataCanvas.width;
+                }
+            }
+
+            draw() {
+                dataCtx.font = '10px "Press Start 2P"';
+                this.chars.forEach((item, i) => {
+                    const y = this.y - i * 20;
+                    if (y > 0 && y < dataCanvas.height) {
+                        dataCtx.fillStyle = `rgba(0, 255, 0, ${item.opacity * 0.6})`;
+                        dataCtx.fillText(item.char, this.x, y);
+                    }
+                });
+            }
+        }
+
+        for (let i = 0; i < 30; i++) {
+            dataStreams.push(new DataStream());
+        }
+
+        function animateDataStream() {
+            dataCtx.fillStyle = 'rgba(10, 10, 10, 0.15)';
+            dataCtx.fillRect(0, 0, dataCanvas.width, dataCanvas.height);
+
+            dataStreams.forEach(stream => {
+                stream.update();
+                stream.draw();
+            });
+
+            requestAnimationFrame(animateDataStream);
+        }
+
+        animateDataStream();
+
+        // Create floating AI emoji elements
+        function createAIElements() {
+            const aiEmojis = ['🤖', '🧠', '💡', '⚡', '🔮', '🎯', '📊', '🔬', '💻', '🚀'];
+
+            for (let i = 0; i < 15; i++) {
+                const element = document.createElement('div');
+                element.className = 'ai-element';
+                element.textContent = aiEmojis[Math.floor(Math.random() * aiEmojis.length)];
+                element.style.left = Math.random() * 100 + 'vw';
+                element.style.animationDuration = (Math.random() * 15 + 10) + 's';
+                element.style.animationDelay = (Math.random() * 10) + 's';
+                element.style.fontSize = (Math.random() * 20 + 16) + 'px';
+                document.body.appendChild(element);
+            }
+        }
+
+        createAIElements();
+
+        // Create binary rain
+        function createBinaryRain() {
+            for (let i = 0; i < 15; i++) {
+                const binary = document.createElement('div');
+                binary.className = 'binary';
+                let binaryString = '';
+                for (let j = 0; j < 20; j++) {
+                    binaryString += Math.random() > 0.5 ? '1' : '0';
+                    binaryString += '<br>';
+                }
+                binary.innerHTML = binaryString;
+                binary.style.left = Math.random() * 100 + 'vw';
+                binary.style.animationDuration = (Math.random() * 10 + 8) + 's';
+                binary.style.animationDelay = (Math.random() * 5) + 's';
+                document.body.appendChild(binary);
+            }
+        }
+
+        createBinaryRain();
+    </script>
+</body>
+</html>
