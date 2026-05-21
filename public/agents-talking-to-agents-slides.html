@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agents Talking to Agents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ===================== Base ===================== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #060b12;
+    --ink:       #f4f8ff;
+    --muted:     rgba(226, 238, 255, 0.66);
+    --a:         #38bdf8; /* Agent A / accent  */
+    --b:         #fbbf24; /* Agent B / amber   */
+    --skeptic:   #c084fc; /* skeptic / violet  */
+    --judge:     #34d399; /* judge / green     */
+    --line:      rgba(148, 178, 214, 0.20);
+    --panel:     rgba(13, 22, 36, 0.72);
+  }
+
+  html, body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: var(--bg); color: var(--ink);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  .deck { width: 100vw; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 3.2vh; padding: 9vh 8vw;
+    opacity: 0; pointer-events: none;
+    transition: opacity 260ms ease;
+    overflow: hidden;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+  .slide.active .pulse { animation-play-state: running; }
+
+  /* art layer sits BEHIND content; motifs are confined to corners */
+  .bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .bg svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .slide > *:not(.bg) { position: relative; z-index: 1; }
+
+  /* ===================== Typography ===================== */
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    color: var(--a); font-weight: 700;
+    font-size: clamp(0.72rem, 1vw, 0.9rem);
+    text-transform: uppercase; letter-spacing: 0;
+    font-family: "Space Grotesk", Inter, sans-serif;
+  }
+  .eyebrow::before { content: ""; width: 26px; height: 2px; background: currentColor; border-radius: 2px; }
+
+  h1 {
+    max-width: 16ch; color: #fff; font-weight: 800;
+    font-size: clamp(2.9rem, 6.4vw, 5.7rem); line-height: 0.98;
+    font-family: "Space Grotesk", Inter, sans-serif;
+  }
+  h2 {
+    max-width: 22ch; color: #fff; font-weight: 800;
+    font-size: clamp(2rem, 4.4vw, 4rem); line-height: 1.02;
+    font-family: "Space Grotesk", Inter, sans-serif;
+  }
+  p { max-width: 60ch; color: var(--muted); font-size: clamp(1rem, 1.5vw, 1.4rem); line-height: 1.5; }
+  p .hi { color: var(--ink); font-weight: 600; }
+  .lead { color: var(--ink); font-size: clamp(1.15rem, 1.9vw, 1.7rem); font-weight: 500; }
+
+  .kicker {
+    align-self: flex-start;
+    border-left: 3px solid var(--a); padding: 0.2rem 0 0.2rem 1rem;
+    color: var(--ink); font-weight: 600;
+    font-size: clamp(1.05rem, 1.7vw, 1.55rem); line-height: 1.35; max-width: 50ch;
+    font-family: "Space Grotesk", Inter, sans-serif;
+  }
+
+  /* ===================== Reusable bits ===================== */
+  .slide-counter {
+    position: fixed; top: 2.2vh; right: 3vw; z-index: 100;
+    color: rgba(226, 238, 255, 0.5);
+    font: 600 0.78rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .slide-counter .current { color: var(--a); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 0.55rem; max-width: 64ch; }
+  .chip {
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 0.4rem 0.85rem; font-size: clamp(0.82rem, 1.1vw, 1rem);
+    color: var(--muted); background: rgba(255,255,255,0.02);
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+
+  .grid { display: grid; gap: 0.9rem; width: min(100%, 1080px); }
+  .g3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .g2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .g4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+
+  .panel {
+    border: 1px solid var(--line); border-radius: 12px;
+    background: var(--panel); padding: 1.1rem 1.15rem;
+    backdrop-filter: blur(2px);
+  }
+  .panel .tag { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+  .panel strong { display: block; margin: 0.35rem 0 0.4rem; color: #fff; font-size: 1.02rem; }
+  .panel span { color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
+  .panel.a  { border-color: rgba(56,189,248,0.4); }  .panel.a  .tag { color: var(--a); }
+  .panel.b  { border-color: rgba(251,191,36,0.4); }  .panel.b  .tag { color: var(--b); }
+  .panel.s  { border-color: rgba(192,132,252,0.4); } .panel.s  .tag { color: var(--skeptic); }
+  .panel.j  { border-color: rgba(52,211,153,0.45); } .panel.j  .tag { color: var(--judge); }
+
+  .stack { display: flex; flex-direction: column; gap: 1rem; }
+
+  ul.clean { list-style: none; display: flex; flex-direction: column; gap: 0.7rem; max-width: 60ch; }
+  ul.clean li { position: relative; padding-left: 1.5rem; color: var(--muted); font-size: clamp(0.98rem, 1.35vw, 1.28rem); line-height: 1.4; }
+  ul.clean li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 8px; height: 8px; border-radius: 2px; background: var(--a); transform: rotate(45deg); }
+  ul.clean li b { color: var(--ink); font-weight: 600; }
+
+  .vs-split { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1.4rem; align-items: stretch; width: min(100%, 1040px); }
+  .vs-split .badge {
+    align-self: center; font-family: "Space Grotesk"; font-weight: 700; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 50%; width: 56px; height: 56px;
+    display: grid; place-items: center; background: rgba(255,255,255,0.03);
+  }
+
+  /* pipeline / flow */
+  .flow { display: flex; align-items: stretch; gap: 0; width: min(100%, 1100px); flex-wrap: wrap; }
+  .flow .step { flex: 1 1 0; min-width: 150px; position: relative; padding: 1rem 1.05rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); margin-right: 2.4rem; }
+  .flow .step:last-child { margin-right: 0; }
+  .flow .step:not(:last-child)::after {
+    content: "→"; position: absolute; right: -1.85rem; top: 50%; transform: translateY(-50%);
+    color: var(--a); font-size: 1.3rem; font-weight: 700;
+  }
+  .flow .step .role { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--a); font-weight: 700; }
+  .flow .step strong { display: block; margin-top: 0.3rem; color: #fff; font-size: 1.05rem; font-family: "Space Grotesk"; }
+  .flow .step span { display:block; margin-top: 0.4rem; color: var(--muted); font-size: 0.85rem; line-height: 1.35; }
+
+  .pull {
+    font-family: "Space Grotesk", Inter, sans-serif; font-weight: 700; color: #fff;
+    font-size: clamp(1.5rem, 3.4vw, 3rem); line-height: 1.08; max-width: 24ch;
+  }
+  .pull em { font-style: normal; color: var(--a); }
+  .pull .amber { color: var(--b); }
+  .pull .green { color: var(--judge); }
+
+  .prompt-card {
+    align-self: flex-start; border: 1px solid rgba(251,191,36,0.4); border-radius: 14px;
+    background: rgba(26,22,6,0.5); padding: 1.1rem 1.4rem; max-width: 40ch;
+  }
+  .prompt-card .lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--b); font-weight: 700; }
+  .prompt-card .q { display:block; margin-top: 0.4rem; color: #fff; font-family: "Space Grotesk"; font-weight: 700; font-size: clamp(1.2rem, 2vw, 1.7rem); line-height: 1.15; }
+
+  /* corner motif animations */
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  @keyframes pulse { 0% { r: 5; opacity: 0.85; } 100% { r: 40; opacity: 0; } }
+  @keyframes dash { to { stroke-dashoffset: -36; } }
+  .pulse { animation: pulse 2.8s ease-out infinite; animation-play-state: paused; }
+  .floaty { animation: float 7s ease-in-out infinite; }
+  .dashline { stroke-dasharray: 5 7; animation: dash 1.6s linear infinite; }
+
+  @media (max-width: 820px) {
+    .slide { padding: 8vh 6vw; gap: 2.4vh; }
+    .twocol, .g3, .g4, .g2, .vs-split { grid-template-columns: 1fr; }
+    .vs-split .badge { width: 44px; height: 44px; }
+    .flow { flex-direction: column; }
+    .flow .step { margin-right: 0; margin-bottom: 2rem; }
+    .flow .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -1.7rem; transform: translateX(50%); }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+  <div class="slide-counter"><span class="current" id="counter-current">1</span> / <span id="counter-total">17</span></div>
+
+  <!-- 1 ============ TITLE ============ -->
+  <section class="slide active">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <radialGradient id="t-gA" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.32"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/></radialGradient>
+          <radialGradient id="t-gB" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fbbf24" stop-opacity="0.28"/><stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/></radialGradient>
+        </defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <circle cx="180" cy="120" r="220" fill="url(#t-gA)"/>
+        <circle cx="1150" cy="640" r="240" fill="url(#t-gB)"/>
+        <!-- two-agent conversation motif, confined to right edge -->
+        <g transform="translate(0,0)">
+          <path d="M1120 150 C 1210 270, 1060 470, 1150 560" fill="none" stroke="#5b7ba6" stroke-opacity="0.4" stroke-width="2" class="dashline"/>
+          <g class="floaty"><rect x="1066" y="330" rx="8" width="52" height="30" fill="#0e1a2b" stroke="#38bdf8" stroke-opacity="0.5"/><circle cx="1082" cy="345" r="2.6" fill="#38bdf8"/><circle cx="1092" cy="345" r="2.6" fill="#38bdf8"/><circle cx="1102" cy="345" r="2.6" fill="#38bdf8"/></g>
+          <circle cx="1120" cy="150" class="pulse" fill="none" stroke="#38bdf8"/>
+          <circle cx="1120" cy="150" r="14" fill="#060b12" stroke="#38bdf8" stroke-width="3"/>
+          <circle cx="1150" cy="560" class="pulse" style="animation-delay:-1.4s" fill="none" stroke="#fbbf24"/>
+          <circle cx="1150" cy="560" r="14" fill="#060b12" stroke="#fbbf24" stroke-width="3"/>
+        </g>
+      </svg>
+    </div>
+    <div class="eyebrow">A.I. Collective · live talk</div>
+    <h1>Agents talking <br>to agents</h1>
+    <p class="lead">Building smarter systems through collaboration — when one model becomes a team.</p>
+  </section>
+
+  <!-- 2 ============ COLD OPEN — QUESTION ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="cq-g" cx="50%" cy="46%" r="55%"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.18"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#cq-g)"/>
+        <!-- single lone agent node, bottom-right corner only -->
+        <g transform="translate(1130,600)">
+          <circle class="pulse" fill="none" stroke="#38bdf8"/>
+          <circle r="14" fill="#060b12" stroke="#38bdf8" stroke-width="3"/>
+        </g>
+      </svg>
+    </div>
+    <div class="eyebrow">Cold open</div>
+    <h1>“What’s better than one agent?”</h1>
+  </section>
+
+  <!-- 3 ============ COLD OPEN — ANSWER ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="ca-g" cx="85%" cy="22%" r="48%"><stop offset="0%" stop-color="#fbbf24" stop-opacity="0.15"/><stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#ca-g)"/>
+        <!-- 1 + 2 glyph motif, top-right corner only -->
+        <g transform="translate(1090,70)" font-family="Space Grotesk" font-weight="700">
+          <text x="0" y="60" font-size="80" fill="#16273d">1</text>
+          <text x="60" y="100" font-size="80" fill="#1f1a0c">2</text>
+        </g>
+      </svg>
+    </div>
+    <div class="eyebrow" style="color:var(--b)">The answer</div>
+    <h2>Two agents —<br><span style="color:var(--b)">but only if the second one has a real job.</span></h2>
+    <div class="chips">
+      <span class="chip">Not one that just <b>agrees</b></span>
+      <span class="chip">Not one that <b>repeats the answer</b> in a different font</span>
+    </div>
+    <ul class="clean">
+      <li>Challenge the answer · check the work · argue another side</li>
+      <li>Use a different tool · own a different stage · improve a different part</li>
+    </ul>
+  </section>
+
+  <!-- 3 ============ SINGLE-AGENT PROBLEM ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="e-g" cx="88%" cy="80%" r="42%"><stop offset="0%" stop-color="#c084fc" stop-opacity="0.16"/><stop offset="100%" stop-color="#c084fc" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#e-g)"/>
+        <!-- echo-chamber loop, bottom-right corner only -->
+        <g transform="translate(1130,600)">
+          <circle r="62" fill="none" stroke="#5b7ba6" stroke-opacity="0.2" stroke-width="2" class="dashline"/>
+          <path d="M0 -62 A62 62 0 1 1 -54 31" fill="none" stroke="#c084fc" stroke-opacity="0.55" stroke-width="2.5"/>
+          <path d="M-54 31 l -1 -11 l 11 4 z" fill="#c084fc" fill-opacity="0.8"/>
+          <circle r="13" fill="#060b12" stroke="#c084fc" stroke-width="3"/>
+          <circle r="4" fill="#c084fc"/>
+        </g>
+      </svg>
+    </div>
+    <div class="eyebrow" style="color:var(--skeptic)">The single-agent problem</div>
+    <h2>One pass, one perspective</h2>
+    <div class="grid g2">
+      <ul class="clean">
+        <li>Converges <b>too early</b></li>
+        <li>Sticks with the <b>first framing</b></li>
+        <li>Stops digging at a <b>plausible</b> answer</li>
+      </ul>
+      <ul class="clean">
+        <li>Struggles to <b>review its own work</b></li>
+        <li>Sounds <b>confident even when wrong</b></li>
+        <li>Won’t push back on a <b>bad premise</b></li>
+      </ul>
+    </div>
+    <p class="kicker" style="border-color:var(--skeptic)">Single agents aren’t broken. Some tasks just need more than one perspective, role, or pass.</p>
+  </section>
+
+  <!-- 4 ============ THE REFRAME ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="r-g" cx="50%" cy="12%" r="55%"><stop offset="0%" stop-color="#34d399" stop-opacity="0.12"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#r-g)"/>
+      </svg>
+    </div>
+    <div class="eyebrow">The multi-agent reframe</div>
+    <div class="vs-split">
+      <div class="panel s">
+        <div class="tag" style="color:var(--skeptic)">Multi-agent is NOT</div>
+        <strong style="font-family:'Space Grotesk';font-size:1.35rem">“More agents = better.”</strong>
+        <span>Bolting on copies adds cost, not quality.</span>
+      </div>
+      <div class="badge">→</div>
+      <div class="panel j">
+        <div class="tag">Multi-agent IS</div>
+        <strong style="font-family:'Space Grotesk';font-size:1.35rem">Different agents, structured to improve the outcome.</strong>
+        <span>Every role moves the result forward.</span>
+      </div>
+    </div>
+    <div class="chips">
+      <span class="chip">specialization</span><span class="chip">independent review</span><span class="chip">adversarial critique</span><span class="chip">parallel exploration</span><span class="chip">orchestration</span><span class="chip">tool specialization</span><span class="chip">QA</span><span class="chip">structured handoffs</span>
+    </div>
+    <p class="kicker">The second agent has to <span style="color:var(--a)">earn its place.</span></p>
+  </section>
+
+  <!-- 5 ============ WHAT IT MEANS ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="m-g" cx="14%" cy="20%" r="46%"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.14"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#m-g)"/>
+        <!-- small network mesh, top-right corner only -->
+        <g transform="translate(1040,40)">
+          <g stroke="#5b7ba6" stroke-opacity="0.25" stroke-width="1.5">
+            <line x1="20" y1="40" x2="120" y2="20"/><line x1="120" y1="20" x2="90" y2="120"/>
+            <line x1="90" y1="120" x2="20" y2="40"/><line x1="120" y1="20" x2="200" y2="80"/>
+          </g>
+          <g fill="#38bdf8" fill-opacity="0.7"><circle cx="20" cy="40" r="5"/><circle cx="120" cy="20" r="5"/><circle cx="90" cy="120" r="5"/><circle cx="200" cy="80" r="5"/></g>
+        </g>
+      </svg>
+    </div>
+    <div class="eyebrow">Definition</div>
+    <h2>A coordinated workflow of model-driven actors toward a shared goal</h2>
+    <p>Agents may differ along any of these dimensions:</p>
+    <div class="chips">
+      <span class="chip"><b>role</b></span><span class="chip"><b>prompt</b></span><span class="chip"><b>tools</b></span><span class="chip"><b>context</b></span><span class="chip"><b>memory</b></span><span class="chip"><b>permissions</b></span><span class="chip"><b>output format</b></span><span class="chip"><b>authority</b></span>
+    </div>
+    <p class="kicker">The only question that matters: <span style="color:var(--a)">what does this agent add that improves the result?</span></p>
+  </section>
+
+  <!-- 6 ============ DEBATE PATTERN ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="d-g" cx="88%" cy="84%" r="44%"><stop offset="0%" stop-color="#34d399" stop-opacity="0.12"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#d-g)"/>
+        <!-- compact A/B/Judge motif, bottom-right corner only -->
+        <g transform="translate(1050,560)">
+          <line x1="0" y1="60" x2="160" y2="60" stroke="#5b7ba6" stroke-opacity="0.3" stroke-width="1.5" class="dashline"/>
+          <circle cx="0"   cy="60" r="14" fill="#060b12" stroke="#38bdf8" stroke-width="3"/>
+          <circle cx="160" cy="60" r="14" fill="#060b12" stroke="#fbbf24" stroke-width="3"/>
+          <polygon points="80,8 60,46 100,46" fill="#060b12" stroke="#34d399" stroke-width="3"/>
+        </g>
+      </svg>
+    </div>
+    <div class="eyebrow">Multi-agent pattern · 01</div>
+    <h2>Debate &amp; adversarial critique</h2>
+    <div class="flow" style="max-width:980px">
+      <div class="step a"><div class="role" style="color:var(--a)">Agent A</div><strong>Argues one side</strong></div>
+      <div class="step b"><div class="role" style="color:var(--b)">Agent B</div><strong>Argues another</strong></div>
+      <div class="step j"><div class="role" style="color:var(--judge)">Judge</div><strong>Evaluates &amp; synthesizes</strong></div>
+    </div>
+    <ul class="clean">
+      <li>surface assumptions · test weak claims · explore multiple frames</li>
+      <li>avoid premature convergence · produce a better synthesis</li>
+    </ul>
+    <p class="kicker" style="border-color:var(--judge)">Debate works when disagreement <span style="color:var(--judge)">improves the final answer</span> — not for its own sake.</p>
+  </section>
+
+  <!-- 8 ============ PATTERN · BUILDER + REVIEWER ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="br-g" cx="86%" cy="84%" r="44%"><stop offset="0%" stop-color="#34d399" stop-opacity="0.12"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#br-g)"/>
+        <!-- build → check motif, bottom-right corner only -->
+        <g transform="translate(1050,590)">
+          <line x1="0" y1="50" x2="150" y2="50" stroke="#5b7ba6" stroke-opacity="0.3" stroke-width="1.5" class="dashline"/>
+          <rect x="-14" y="36" width="28" height="28" rx="4" fill="#060b12" stroke="#38bdf8" stroke-width="3"/>
+          <circle cx="150" cy="50" r="14" fill="#060b12" stroke="#34d399" stroke-width="3"/>
+          <path d="M143 50 l 5 6 l 9 -12" fill="none" stroke="#34d399" stroke-width="2.5"/>
+        </g>
+      </svg>
+    </div>
+    <div class="eyebrow">Multi-agent pattern · 02</div>
+    <h2>Builder + Reviewer</h2>
+    <div class="flow" style="max-width:820px">
+      <div class="step a"><div class="role" style="color:var(--a)">Builder</div><strong>Creates the work</strong><span>Writer · Coder · Researcher · Planner</span></div>
+      <div class="step j"><div class="role" style="color:var(--judge)">Reviewer</div><strong>Improves the outcome</strong><span>Editor · Reviewer · Fact-checker · Auditor</span></div>
+    </div>
+    <div class="chips">
+      <span class="chip">Writer → <b>Editor</b></span><span class="chip">Coder → <b>Reviewer</b></span><span class="chip">Researcher → <b>Fact-checker</b></span><span class="chip">Planner → <b>Auditor</b></span>
+    </div>
+    <p class="kicker" style="border-color:var(--judge)">Catches mistakes, improves quality, checks constraints, reduces blind spots.</p>
+  </section>
+
+  <!-- 9 ============ PATTERN · ORCHESTRATOR + WORKERS ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="ow-g" cx="86%" cy="16%" r="44%"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.12"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#ow-g)"/>
+      </svg>
+    </div>
+    <div class="eyebrow">Multi-agent pattern · 03 · centralized orchestration</div>
+    <h2>Orchestrator + specialist roles</h2>
+    <div class="diagram" style="width:min(100%,760px)">
+      <svg viewBox="0 0 740 320" style="width:100%;height:auto;display:block" font-family="Inter, sans-serif">
+        <defs>
+          <marker id="ah-pm" markerWidth="9" markerHeight="7" refX="7.5" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6 Z" fill="#7da0c8"/></marker>
+        </defs>
+        <!-- hub ↔ spoke (delegate out, report back); no spoke-to-spoke links -->
+        <g stroke="#7da0c8" stroke-opacity="0.7" stroke-width="2" fill="none">
+          <line x1="206" y1="160" x2="466" y2="40"  marker-start="url(#ah-pm)" marker-end="url(#ah-pm)" class="dashline"/>
+          <line x1="206" y1="160" x2="466" y2="120" marker-start="url(#ah-pm)" marker-end="url(#ah-pm)" class="dashline"/>
+          <line x1="206" y1="160" x2="466" y2="200" marker-start="url(#ah-pm)" marker-end="url(#ah-pm)" class="dashline"/>
+          <line x1="206" y1="160" x2="466" y2="280" marker-start="url(#ah-pm)" marker-end="url(#ah-pm)" class="dashline"/>
+        </g>
+        <!-- PM orchestrator -->
+        <rect x="34" y="126" width="172" height="68" rx="12" fill="#0d1624" stroke="#38bdf8" stroke-width="2.5"/>
+        <text x="120" y="158" text-anchor="middle" font-size="21" font-weight="700" fill="#ffffff">PM</text>
+        <text x="120" y="180" text-anchor="middle" font-size="12.5" fill="#9fb6d4">orchestrates</text>
+        <!-- distinct specialist roles -->
+        <text x="590" y="11" text-anchor="middle" font-size="12" fill="#9fb6d4">distinct roles — they never talk to each other</text>
+        <rect x="470" y="16"  width="240" height="48" rx="11" fill="#0d1624" stroke="#fbbf24" stroke-width="2.5"/>
+        <text x="488" y="40" font-size="17" font-weight="700" fill="#ffffff">Architect</text>
+        <text x="488" y="56" font-size="11.5" fill="#9fb6d4">structure</text>
+        <rect x="470" y="96"  width="240" height="48" rx="11" fill="#0d1624" stroke="#c084fc" stroke-width="2.5"/>
+        <text x="488" y="120" font-size="17" font-weight="700" fill="#ffffff">Engineer</text>
+        <text x="488" y="136" font-size="11.5" fill="#9fb6d4">implementation</text>
+        <rect x="470" y="176" width="240" height="48" rx="11" fill="#0d1624" stroke="#f472b6" stroke-width="2.5"/>
+        <text x="488" y="200" font-size="17" font-weight="700" fill="#ffffff">Designer</text>
+        <text x="488" y="216" font-size="11.5" fill="#9fb6d4">experience</text>
+        <rect x="470" y="256" width="240" height="48" rx="11" fill="#0d1624" stroke="#34d399" stroke-width="2.5"/>
+        <text x="488" y="280" font-size="17" font-weight="700" fill="#ffffff">QA</text>
+        <text x="488" y="296" font-size="11.5" fill="#9fb6d4">correctness</text>
+      </svg>
+    </div>
+    <p class="kicker">The PM holds the goal and delegates to each role; specialists <span style="color:var(--a)">report back to the PM, never to each other.</span></p>
+  </section>
+
+  <!-- 11 ============ DEMO · DEBATE PATTERN ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <radialGradient id="demo-a" cx="12%" cy="18%" r="40%"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.16"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/></radialGradient>
+          <radialGradient id="demo-b" cx="90%" cy="86%" r="42%"><stop offset="0%" stop-color="#fbbf24" stop-opacity="0.14"/><stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/></radialGradient>
+        </defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#demo-a)"/>
+        <rect width="1280" height="720" fill="url(#demo-b)"/>
+        <!-- two advocates converging motif, top-right corner only -->
+        <g transform="translate(1058,96)">
+          <line x1="18"  y1="0" x2="58" y2="0" stroke="#38bdf8" stroke-opacity="0.6" stroke-width="2" class="dashline"/>
+          <line x1="122" y1="0" x2="82" y2="0" stroke="#fbbf24" stroke-opacity="0.6" stroke-width="2" class="dashline"/>
+          <circle cx="0"   cy="0" class="pulse" fill="none" stroke="#38bdf8"/>
+          <circle cx="0"   cy="0" r="14" fill="#060b12" stroke="#38bdf8" stroke-width="3"/>
+          <circle cx="140" cy="0" class="pulse" style="animation-delay:-1.4s" fill="none" stroke="#fbbf24"/>
+          <circle cx="140" cy="0" r="14" fill="#060b12" stroke="#fbbf24" stroke-width="3"/>
+          <circle cx="70"  cy="0" r="7" fill="#34d399"/>
+        </g>
+      </svg>
+    </div>
+    <div class="eyebrow" style="color:var(--b)">Demo</div>
+    <h2>The debate pattern, live</h2>
+    <div class="prompt-card">
+      <span class="lbl">The prompt</span>
+      <span class="q">Picked live — we’ll run a few scenarios.</span>
+    </div>
+    <div class="vs-split">
+      <div class="panel a"><div class="tag">Agent 1 · Advocate</div><strong>Argues side A</strong><span>Makes the strongest case for one position.</span></div>
+      <div class="badge">⇄</div>
+      <div class="panel b"><div class="tag">Agent 2 · Advocate</div><strong>Argues side B</strong><span>Makes the strongest case for the other.</span></div>
+    </div>
+    <p class="kicker">No judge, no referee — the two advocates exchange, concede, and <span style="color:var(--judge)">converge on a shared answer.</span></p>
+  </section>
+
+  <!-- 9 ============ COORDINATION ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="co-g" cx="14%" cy="84%" r="46%"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.12"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#co-g)"/>
+      </svg>
+    </div>
+    <div class="eyebrow">How agents coordinate</div>
+    <h2>Five questions every system must answer</h2>
+    <div class="grid g3" style="gap:0.8rem">
+      <div class="panel"><div class="tag" style="color:var(--a)">01</div><strong>Who owns the next step?</strong></div>
+      <div class="panel"><div class="tag" style="color:var(--a)">02</div><strong>What context does it need?</strong></div>
+      <div class="panel"><div class="tag" style="color:var(--a)">03</div><strong>What should it produce?</strong></div>
+      <div class="panel"><div class="tag" style="color:var(--a)">04</div><strong>Who checks the output?</strong></div>
+      <div class="panel"><div class="tag" style="color:var(--a)">05</div><strong>When does the system stop?</strong></div>
+      <div class="panel j"><div class="tag">Result</div><strong>Each agent improves a different part of the result.</strong></div>
+    </div>
+    <p class="kicker" style="border-color:var(--skeptic)">Without structure you don’t get a team — <span style="color:var(--skeptic)">you get a group chat.</span></p>
+  </section>
+
+  <!-- 10 ============ CADRAI ORCHESTRATION ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="cad-g" cx="86%" cy="84%" r="46%"><stop offset="0%" stop-color="#34d399" stop-opacity="0.12"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#cad-g)"/>
+      </svg>
+    </div>
+    <div class="eyebrow" style="color:var(--judge)">Bonus demo · Cadrai</div>
+    <h2>The orchestrator pattern in production</h2>
+    <div class="panel a" style="align-self:flex-start;max-width:46ch">
+      <div class="tag">Orchestrator</div><strong>PM</strong><span>Holds the goal, delegates to each role, and integrates what comes back.</span>
+    </div>
+    <div class="grid g4">
+      <div class="panel b"><div class="tag">Specialist</div><strong>Architect</strong><span>Owns the structure.</span></div>
+      <div class="panel s"><div class="tag">Specialist</div><strong>Engineer</strong><span>Owns the build.</span></div>
+      <div class="panel" style="border-color:rgba(244,114,182,0.4)"><div class="tag" style="color:#f472b6">Specialist</div><strong>Designer</strong><span>Owns the experience.</span></div>
+      <div class="panel j"><div class="tag">Specialist</div><strong>QA</strong><span>Owns correctness.</span></div>
+    </div>
+    <p class="kicker">Each role reports to the PM, never to each other. <span style="color:var(--judge)">One agent catches what another missed — coordinated, not chaotic.</span></p>
+  </section>
+
+  <!-- 11 ============ FAILURE MODES ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs><radialGradient id="f-g" cx="88%" cy="18%" r="42%"><stop offset="0%" stop-color="#f87171" stop-opacity="0.14"/><stop offset="100%" stop-color="#f87171" stop-opacity="0"/></radialGradient></defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect width="1280" height="720" fill="url(#f-g)"/>
+        <!-- tangled loop, top-right corner only -->
+        <g transform="translate(1110,120)" stroke="#f87171" stroke-opacity="0.45" stroke-width="2.5" fill="none">
+          <path d="M0 0 C 60 -30, 60 60, 0 45 C -52 33, -45 -22, 7 -15 C 45 -9, 30 38, -7 30" class="dashline"/>
+        </g>
+      </svg>
+    </div>
+    <div class="eyebrow" style="color:#f87171">Failure modes</div>
+    <h2>When coordination costs more than the task</h2>
+    <div class="grid g2">
+      <ul class="clean">
+        <li style="--a:#f87171">Runaway token cost</li>
+        <li style="--a:#f87171">Infinite loops</li>
+        <li style="--a:#f87171">Agents just agreeing with each other</li>
+        <li style="--a:#f87171">Debate becoming rhetoric, not truth-seeking</li>
+      </ul>
+      <ul class="clean">
+        <li style="--a:#f87171">Lost context across handoffs</li>
+        <li style="--a:#f87171">Unclear ownership · no stopping condition</li>
+        <li style="--a:#f87171">Too many agents for a simple job</li>
+        <li style="--a:#f87171">Debugging five agents at 11 p.m.</li>
+      </ul>
+    </div>
+    <p class="kicker" style="border-color:#f87171">If you can’t explain how the next agent improves the result — <span style="color:#f87171">don’t add it.</span></p>
+  </section>
+
+  <!-- 12 ============ WHEN IT'S WORTH IT ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <rect width="1280" height="720" fill="#060b12"/>
+        <rect x="0" y="0" width="640" height="720" fill="#0a1410" opacity="0.55"/>
+        <rect x="640" y="0" width="640" height="720" fill="#141009" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="eyebrow">The decision</div>
+    <div class="grid g2" style="gap:2rem">
+      <div class="stack">
+        <div class="eyebrow" style="color:var(--judge)">Use multi-agent when…</div>
+        <ul class="clean" style="--a:var(--judge)">
+          <li>Multiple perspectives or independent review help</li>
+          <li>Adversarial critique or role specialization matters</li>
+          <li>Parallel exploration, complex handoffs, or QA</li>
+          <li>Long-horizon execution</li>
+        </ul>
+      </div>
+      <div class="stack">
+        <div class="eyebrow" style="color:var(--b)">Skip it when…</div>
+        <ul class="clean" style="--a:var(--b)">
+          <li>One prompt already works</li>
+          <li>Speed matters more than quality</li>
+          <li>The task is simple or easy to verify by hand</li>
+          <li>The agents don’t have distinct jobs</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 ============ CLOSING CHALLENGE ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <radialGradient id="cl-a" cx="14%" cy="22%" r="40%"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.28"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/></radialGradient>
+          <radialGradient id="cl-b" cx="88%" cy="82%" r="42%"><stop offset="0%" stop-color="#34d399" stop-opacity="0.26"/><stop offset="100%" stop-color="#34d399" stop-opacity="0"/></radialGradient>
+        </defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <circle cx="150" cy="130" r="240" fill="url(#cl-a)"/>
+        <circle cx="1140" cy="600" r="250" fill="url(#cl-b)"/>
+        <!-- create→improve handoff motif, bottom-right corner only -->
+        <g transform="translate(1040,580)">
+          <path d="M0 50 C 60 0, 110 0, 160 50" fill="none" stroke="#5b7ba6" stroke-opacity="0.4" stroke-width="2" class="dashline"/>
+          <circle cx="0" cy="50" class="pulse" fill="none" stroke="#38bdf8"/>
+          <circle cx="0" cy="50" r="13" fill="#060b12" stroke="#38bdf8" stroke-width="3"/>
+          <circle cx="160" cy="50" class="pulse" style="animation-delay:-1.4s" fill="none" stroke="#34d399"/>
+          <circle cx="160" cy="50" r="13" fill="#060b12" stroke="#34d399" stroke-width="3"/>
+        </g>
+      </svg>
+    </div>
+    <div class="eyebrow">Your challenge</div>
+    <h1 style="font-size:clamp(2.4rem,5vw,4.4rem)">Build a two-agent system before the next meetup</h1>
+    <p class="lead">One agent <span style="color:var(--a)">creates.</span> One agent <span style="color:var(--judge)">improves the outcome.</span></p>
+    <p class="kicker">Then ask: what did the second agent <span style="color:var(--ink)">catch, challenge, or make better?</span></p>
+  </section>
+
+  <!-- 16 ============ THE END ============ -->
+  <section class="slide">
+    <div class="bg">
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <radialGradient id="end-a" cx="22%" cy="34%" r="44%"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.26"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/></radialGradient>
+          <radialGradient id="end-b" cx="80%" cy="70%" r="44%"><stop offset="0%" stop-color="#fbbf24" stop-opacity="0.22"/><stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/></radialGradient>
+        </defs>
+        <rect width="1280" height="720" fill="#060b12"/>
+        <circle cx="200" cy="220" r="240" fill="url(#end-a)"/>
+        <circle cx="1080" cy="520" r="240" fill="url(#end-b)"/>
+        <!-- two-agent bookend motif, bottom-right corner only -->
+        <g transform="translate(1040,580)">
+          <path d="M0 50 C 60 0, 110 0, 160 50" fill="none" stroke="#5b7ba6" stroke-opacity="0.4" stroke-width="2" class="dashline"/>
+          <circle cx="0" cy="50" class="pulse" fill="none" stroke="#38bdf8"/>
+          <circle cx="0" cy="50" r="13" fill="#060b12" stroke="#38bdf8" stroke-width="3"/>
+          <circle cx="160" cy="50" class="pulse" style="animation-delay:-1.4s" fill="none" stroke="#fbbf24"/>
+          <circle cx="160" cy="50" r="13" fill="#060b12" stroke="#fbbf24" stroke-width="3"/>
+        </g>
+      </svg>
+    </div>
+    <h1>The end.</h1>
+  </section>
+
+</div>
+
+<!-- local-only fallback navigation: activates ONLY if /deck-runtime.js is unavailable
+     (e.g. opening this file directly). In the deployed repo the runtime owns navigation. -->
+<script>
+  window.__enableLocalNav = function () {
+    if (window.__localNavOn) return;
+    window.__localNavOn = true;
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var cur = document.getElementById('counter-current');
+    var tot = document.getElementById('counter-total');
+    if (tot) tot.textContent = slides.length;
+    var i = Math.max(0, slides.findIndex(function (s) { return s.classList.contains('active'); }));
+    function show(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach(function (s, k) { s.classList.toggle('active', k === i); });
+      if (cur) cur.textContent = i + 1;
+    }
+    show(i);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); show(i + 1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+      else if (e.key === 'Home') { show(0); } else if (e.key === 'End') { show(slides.length - 1); }
+    });
+    document.querySelector('.deck').addEventListener('click', function (e) {
+      if (e.target.closest('a')) return;
+      show(i + (e.clientX > window.innerWidth / 2 ? 1 : -1));
+    });
+  };
+</script>
+<script
+  src="/deck-runtime.js"
+  data-accent="#38bdf8"
+  data-badge-bg="#060b12"
+  data-badge-border="#1f2937"
+  data-badge-color="#38bdf8"
+  onerror="window.__enableLocalNav()"
+></script>
+</body>
+</html>
