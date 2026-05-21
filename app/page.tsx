@@ -1,10 +1,6 @@
-export default function Home() {
-  const decks = [
-    { name: "Cadrai", href: "/cadrai-slides.html", desc: "Multi-Agent Dev Teams" },
-    { name: "CC Discord", href: "/cc-discord-slides.html", desc: "Discord Agents Powered by Claude Code" },
-    { name: "ChelaMail", href: "/chelamail-slides.html", desc: "Email for AI Agents" },
-  ];
+import decks from "./decks.json";
 
+export default function Home() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2rem", padding: "2rem" }}>
       <h1 style={{ fontSize: "1.6rem", fontWeight: 700, color: "#fff", letterSpacing: "-0.02em" }}>AI Collective Slide Decks</h1>

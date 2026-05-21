@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Cadrai",
+    "href": "/cadrai-slides.html",
+    "desc": "Multi-Agent Dev Teams"
+  },
+  {
+    "name": "CC Discord",
+    "href": "/cc-discord-slides.html",
+    "desc": "Discord Agents Powered by Claude Code"
+  },
+  {
+    "name": "ChelaMail",
+    "href": "/chelamail-slides.html",
+    "desc": "Email for AI Agents"
+  }
+]

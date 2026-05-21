@@ -61,10 +61,16 @@ function RemoteInner() {
 
   // Auto-connect if room param provided
   useEffect(() => {
+    let autoConnectTimer: ReturnType<typeof setTimeout> | null = null;
+
     if (roomParam) {
-      connect(roomParam);
+      autoConnectTimer = setTimeout(() => {
+        connect(roomParam);
+      }, 0);
     }
+
     return () => {
+      if (autoConnectTimer) clearTimeout(autoConnectTimer);
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [roomParam, connect]);
