@@ -1,7 +1,18 @@
-import { kv } from "@vercel/kv";
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  canUseRoomStore,
+  getRoom,
+  roomStoreFailureResponse,
+  roomStoreUnavailableResponse,
+  setRoom,
+} from "../room-store";
+
 export async function POST(req: NextRequest) {
+  if (!canUseRoomStore()) {
+    return NextResponse.json(roomStoreUnavailableResponse(), { status: 503 });
+  }
+
   const body = await req.json();
   const { room, action, slide, total } = body as {
     room: string;
@@ -14,30 +25,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "room and action required" }, { status: 400 });
   }
 
-  const raw = await kv.get(`room:${room}`);
-  if (!raw) {
-    return NextResponse.json({ error: "room not found" }, { status: 404 });
+  try {
+    const state = await getRoom(room);
+    if (!state) {
+      return NextResponse.json({ error: "room not found" }, { status: 404 });
+    }
+
+    // Update total if provided
+    if (total !== undefined) {
+      state.total = total;
+    }
+
+    if (action === "next") {
+      if (state.current < state.total) state.current++;
+    } else if (action === "prev") {
+      if (state.current > 1) state.current--;
+    } else if (action === "goto" && slide !== undefined) {
+      state.current = Math.max(1, Math.min(slide, state.total));
+    }
+
+    state.lastAction = action;
+
+    // Refresh TTL on each nav action
+    await setRoom(room, state);
+
+    return NextResponse.json(state);
+  } catch (error) {
+    return NextResponse.json(roomStoreFailureResponse(error), { status: 502 });
   }
-
-  const state = typeof raw === "string" ? JSON.parse(raw) : raw;
-
-  // Update total if provided
-  if (total !== undefined) {
-    state.total = total;
-  }
-
-  if (action === "next") {
-    if (state.current < state.total) state.current++;
-  } else if (action === "prev") {
-    if (state.current > 1) state.current--;
-  } else if (action === "goto" && slide !== undefined) {
-    state.current = Math.max(1, Math.min(slide, state.total));
-  }
-
-  state.lastAction = action;
-
-  // Refresh TTL on each nav action
-  await kv.set(`room:${room}`, JSON.stringify(state), { ex: 3600 });
-
-  return NextResponse.json(state);
 }

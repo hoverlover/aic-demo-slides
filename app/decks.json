@@ -13,5 +13,10 @@
     "name": "ChelaMail",
     "href": "/chelamail-slides.html",
     "desc": "Email for AI Agents"
+  },
+  {
+    "name": "Agents Talking to Agents",
+    "href": "/agents-talking-to-agents-slides.html",
+    "desc": "Multi-agent patterns and agent-to-agent workflows"
   }
 ]
